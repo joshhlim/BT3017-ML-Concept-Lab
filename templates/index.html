@@ -1,0 +1,3467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Concept Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1e28;
+  --border: #252a38;
+  --border2: #2e3448;
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --muted2: #9ca3af;
+
+  /* Per-lab accent colours */
+  --kernel-accent: #7c6ef7;
+  --kernel-glow: rgba(124,110,247,0.15);
+  --pca-accent: #34d399;
+  --pca-glow: rgba(52,211,153,0.15);
+  --spectral-accent: #f59e0b;
+  --spectral-glow: rgba(245,158,11,0.15);
+  --gnn-accent: #f87171;
+  --gnn-glow: rgba(248,113,113,0.15);
+
+  --accent: var(--kernel-accent);
+  --glow: var(--kernel-glow);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --display: 'Fraunces', serif;
+  --transition: 0.2s ease;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── App Shell ─────────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky; top: 0;
+  background: rgba(13,15,20,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+.logo {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.logo span { color: var(--accent); transition: color 0.4s; }
+.header-sep { flex: 1; }
+.header-tag {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Lab Navigation ────────────────────────────────────────── */
+.lab-nav {
+  display: flex;
+  gap: 4px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+}
+.lab-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--muted2);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.lab-btn:hover { background: var(--surface2); color: var(--text); }
+.lab-btn.active {
+  background: var(--glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.lab-btn .lab-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  background: var(--surface2);
+  transition: background var(--transition);
+}
+.lab-btn.active .lab-icon { background: var(--glow); }
+
+/* ── Main Content ──────────────────────────────────────────── */
+main { flex: 1; padding: 28px 32px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+/* ── Lab Panels ────────────────────────────────────────────── */
+.lab-panel { display: none; }
+.lab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Lab Header ────────────────────────────────────────────── */
+.lab-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.lab-title {
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.lab-title em { font-style: italic; color: var(--accent); }
+
+.lab-subtitle {
+  color: var(--muted2);
+  font-size: 0.9rem;
+  margin-top: 4px;
+  max-width: 500px;
+}
+
+/* ── Mode Tabs ─────────────────────────────────────────────── */
+.mode-tabs {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  gap: 2px;
+}
+.mode-tab {
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--muted2);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mode-tab:hover { color: var(--text); }
+.mode-tab.active {
+  background: var(--glow);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Mode Panels ───────────────────────────────────────────── */
+.mode-panel { display: none; }
+.mode-panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+/* ── Card ──────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card-sm { padding: 14px 16px; }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+.two-col-eq {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── Controls ──────────────────────────────────────────────── */
+.controls-panel { display: flex; flex-direction: column; gap: 14px; }
+
+.ctrl-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ctrl-value {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  float: right;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+.select-styled {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.select-styled:focus { border-color: var(--accent); }
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Plot container ────────────────────────────────────────── */
+.plot-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 340px;
+}
+.plot-title {
+  padding: 12px 16px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Explainer Steps ───────────────────────────────────────── */
+.step-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.step-dots {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.step-dot {
+  height: 4px;
+  border-radius: 2px;
+  flex: 1;
+  background: var(--border2);
+  transition: background 0.3s;
+  cursor: pointer;
+}
+.step-dot.active { background: var(--accent); }
+.step-dot.done { background: var(--accent); opacity: 0.4; }
+
+.step-counter {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.step-content {
+  min-height: 400px;
+}
+.step-slide { display: none; }
+.step-slide.active { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; animation: fadeIn 0.3s ease; }
+.step-slide.full { display: none; }
+.step-slide.full.active { display: block; }
+
+.step-text h3 {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.step-text h3 em { font-style: italic; color: var(--accent); }
+.step-text p { color: var(--muted2); font-size: 0.9rem; line-height: 1.7; margin-bottom: 10px; }
+
+.math-block {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.insight-box {
+  background: var(--glow);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.insight-box strong { color: var(--accent); }
+
+/* ── Quiz ──────────────────────────────────────────────────── */
+.quiz-container { max-width: 680px; margin: 0 auto; }
+.quiz-progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+.quiz-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.quiz-q-num {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.quiz-question {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin-bottom: 24px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.quiz-options { display: flex; flex-direction: column; gap: 10px; }
+.quiz-option {
+  padding: 14px 18px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 0.9rem;
+  color: var(--muted2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.quiz-option:hover:not(.locked) { border-color: var(--accent); color: var(--text); background: var(--glow); }
+.quiz-option .opt-letter {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+.quiz-option.correct {
+  border-color: #34d399;
+  background: rgba(52,211,153,0.1);
+  color: var(--text);
+}
+.quiz-option.correct .opt-letter { background: #34d399; color: #0d0f14; }
+.quiz-option.wrong {
+  border-color: #f87171;
+  background: rgba(248,113,113,0.1);
+  color: var(--muted2);
+}
+.quiz-option.wrong .opt-letter { background: #f87171; color: #0d0f14; }
+.quiz-option.locked { cursor: default; }
+
+.quiz-explanation {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  font-size: 0.875rem;
+  color: var(--muted2);
+  line-height: 1.7;
+  animation: fadeIn 0.3s ease;
+}
+.quiz-explanation strong { color: var(--text); }
+
+.quiz-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.quiz-score-screen {
+  text-align: center;
+  padding: 40px 20px;
+  animation: fadeIn 0.4s ease;
+}
+.score-ring {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 600;
+  border: 3px solid var(--accent);
+  background: var(--glow);
+  color: var(--accent);
+}
+.score-label { font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; }
+.score-sub { color: var(--muted2); font-size: 0.9rem; }
+
+/* ── GNN Canvas ────────────────────────────────────────────── */
+#gnn-canvas {
+  border-radius: var(--radius);
+  cursor: crosshair;
+  display: block;
+}
+
+/* ── Variance Bar ──────────────────────────────────────────── */
+.variance-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.var-bar-row { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
+.var-bar-label { width: 40px; font-family: var(--mono); color: var(--muted); }
+.var-bar-track { flex: 1; height: 8px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+.var-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.5s ease; }
+.var-bar-val { width: 42px; font-family: var(--mono); color: var(--muted2); text-align: right; font-size: 0.75rem; }
+
+/* ── Status badge ──────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.status-badge.info { background: var(--glow); color: var(--accent); border: 1px solid var(--accent); }
+.status-badge.neutral { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+.dot-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Tooltip ───────────────────────────────────────────────── */
+.tooltip {
+  position: absolute;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  pointer-events: none;
+  z-index: 200;
+  white-space: nowrap;
+}
+
+/* ── Misc ──────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.text-accent { color: var(--accent); }
+.text-muted { color: var(--muted2); }
+.text-mono { font-family: var(--mono); }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+
+.loading-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── GNN Tool buttons ──────────────────────────────────────── */
+.tool-btn {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted2);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.tool-btn.active { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+.tool-btn:hover:not(.active) { border-color: var(--border2); color: var(--text); }
+
+/* ── Message passing animation ─────────────────────────────── */
+.msg-trace {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 200px; overflow-y: auto;
+}
+.msg-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  transition: border-color 0.3s;
+}
+.msg-row.highlight { border-color: var(--accent); background: var(--glow); }
+.msg-node-id {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  width: 36px;
+}
+.msg-arrow { color: var(--muted); }
+.msg-neighbours { color: var(--muted2); }
+
+/* responsive */
+@media (max-width: 900px) {
+  .two-col { grid-template-columns: 1fr; }
+  .three-col { grid-template-columns: 1fr; }
+  .two-col-eq { grid-template-columns: 1fr; }
+  .step-slide.active { grid-template-columns: 1fr; }
+  main { padding: 16px; }
+  .lab-nav { padding: 12px 16px; }
+  header { padding: 14px 16px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header>
+  <div class="logo">ML<span id="logo-dot"> Concept</span> Lab</div>
+  <div class="header-sep"></div>
+  <div class="header-tag">BT3017 · Interactive Learning</div>
+</header>
+
+<!-- ── Lab Navigation ──────────────────────────────────────── -->
+<nav class="lab-nav" id="lab-nav">
+  <button class="lab-btn active" data-lab="kernel" onclick="switchLab('kernel')">
+    <span class="lab-icon">⟨⟩</span> Kernel Trick
+  </button>
+  <button class="lab-btn" data-lab="pca" onclick="switchLab('pca')">
+    <span class="lab-icon">↗</span> PCA
+  </button>
+  <button class="lab-btn" data-lab="spectral" onclick="switchLab('spectral')">
+    <span class="lab-icon">◎</span> Spectral Clustering
+  </button>
+  <button class="lab-btn" data-lab="gnn" onclick="switchLab('gnn')">
+    <span class="lab-icon">⬡</span> Graph Neural Network
+  </button>
+</nav>
+
+<main>
+
+<!-- ════════════════════════════════════════════════════════════
+     KERNEL TRICK LAB
+════════════════════════════════════════════════════════════ -->
+<section class="lab-panel active" id="lab-kernel">
+  <div class="lab-header">
+    <div>
+      <div class="lab-title">The <em>Kernel</em> Trick</div>
+      <div class="lab-subtitle">How SVMs classify non-linearly separable data by lifting it into higher dimensions</div>
+    </div>
+    <div class="mode-tabs" id="kernel-mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('kernel','explain')">① Explain</button>
+      <button class="mode-tab" onclick="switchMode('kernel','sandbox')">② Sandbox</button>
+      <button class="mode-tab" onclick="switchMode('kernel','quiz')">③ Quiz</button>
+    </div>
+  </div>
+
+  <!-- Explain -->
+  <div class="mode-panel active" id="kernel-explain">
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-sm" onclick="kernelStep(-1)">←</button>
+      <div class="step-dots" id="kernel-dots"></div>
+      <span class="step-counter" id="kernel-step-counter">1 / 4</span>
+      <button class="btn btn-ghost btn-sm" onclick="kernelStep(1)">→</button>
+    </div>
+    <div class="step-content" id="kernel-steps">
+
+      <div class="step-slide active" id="kernel-s0">
+        <div class="step-text">
+          <h3>SVMs and the <em>Separation Problem</em></h3>
+          <p>A <strong>Support Vector Machine (SVM)</strong> is a classifier that finds the hyperplane separating two classes with the <em>maximum margin</em> — the widest possible gap between the boundary and the nearest points from each class. Wider margin = better generalisation to unseen data.</p>
+          <p>The points sitting exactly on the margin boundary are called <strong>support vectors</strong> — they are the only training points that determine the boundary. Every other point could be removed without changing the result.</p>
+          <p>But SVMs assume data is <em>linearly separable</em>. Real data often isn't — imagine red dots in a ring around blue dots. No straight line can split them. This is the problem the <strong>kernel trick</strong> solves: it lets SVMs learn curved, non-linear boundaries without any extra computational cost.</p>
+          <div class="math-block">
+            Linear SVM:   f(x) = w·x + b<br>
+            Maximise:     margin = 2 / ‖w‖<br>
+            Subject to:   yᵢ(w·xᵢ + b) ≥ 1  ∀i<br><br>
+            ❌ Fails when no hyperplane separates the classes<br>
+            ✓ Kernel trick fixes this — next steps show how
+          </div>
+          <div class="insight-box"><strong>The kernel trick in one sentence:</strong> Instead of computing in the original space, the kernel trick implicitly maps data into a higher-dimensional space where it <em>becomes</em> linearly separable — without ever computing the mapping explicitly.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Non-linearly separable data — no line works here</div>
+          <div id="kernel-explain-plot0" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="kernel-s1">
+        <div class="step-text">
+          <h3>The <em>Lifting</em> Idea</h3>
+          <p>The key insight: if we can't separate the data in its current space, <em>lift it into a higher-dimensional space</em> where it becomes separable. This transformation is called a <strong>feature map</strong>, denoted φ(x).</p>
+          <p>Consider our circles. In 2D, they overlap when projected onto any line. But if we add a third dimension equal to the radius r² = x₁² + x₂², the inner ring sits at low z-values and the outer ring at high z-values. A flat horizontal plane now separates them perfectly!</p>
+          <p>This is the geometric intuition: what appears entangled in low dimensions often untangles beautifully in higher dimensions. The SVM then finds a hyperplane in this lifted space — which corresponds to a <em>curved</em> boundary back in the original space.</p>
+          <div class="math-block">
+            Feature map:  φ: ℝ² → ℝ³<br>
+            (x₁, x₂) ↦ (x₁, x₂, x₁² + x₂²)<br><br>
+            In lifted space: separating plane at z = threshold<br>
+            In original space: this is a circle!
+          </div>
+          <div class="insight-box"><strong>Problem ahead:</strong> For rich feature maps (e.g. all degree-3 terms in 100D), φ(x) has millions of dimensions — too expensive to compute explicitly. We need a smarter approach.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Lifted into 3D — circles become planes</div>
+          <div id="kernel-explain-plot1" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="kernel-s2">
+        <div class="step-text">
+          <h3>The Kernel <em>Trick</em> — What It Actually Does</h3>
+          <p>The SVM can be rewritten in its <em>dual form</em>, where the optimisation only ever involves pairs of training points through their <strong>inner products</strong> φ(xᵢ)·φ(xⱼ) — never φ(x) alone. This is the key observation that makes the trick possible.</p>
+          <p>Define a <strong>kernel function</strong> K(x, x') = φ(x)·φ(x'). If we can compute this inner product directly from x and x' — without computing φ at all — we get all the benefits of the high-dimensional feature space for free. This is the kernel trick: <em>replace every inner product in the SVM with K(x,x')</em>.</p>
+          <p>For the RBF kernel K(x,x') = exp(−γ‖x−x'‖²), the implied φ maps into an <em>infinite-dimensional</em> space, yet computing K takes only O(d) time. We are doing infinite-dimensional geometry in linear time.</p>
+          <div class="math-block">
+            SVM dual uses only: φ(xᵢ)·φ(xⱼ)<br>
+            → Replace with:     K(xᵢ, xⱼ)  ← the trick!<br><br>
+            <strong>RBF:</strong>    K(x,x') = exp(−γ‖x−x'‖²) → ∞-dim φ<br>
+            <strong>Poly:</strong>   K(x,x') = (x·x' + c)ᵈ   → dᵈ-dim φ<br>
+            <strong>Linear:</strong> K(x,x') = x·x'           → same space<br><br>
+            ✓ Never compute φ(x) explicitly — K does it all
+          </div>
+          <div class="insight-box"><strong>Mercer's theorem:</strong> Any positive semi-definite function K(x,x') is a valid inner product in some feature space. We don't need to know what φ is — K encodes everything needed to train and classify.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">RBF kernel: K(x,x') — similar points score ≈1, distant points ≈0</div>
+          <div id="kernel-explain-plot2" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="kernel-s3">
+        <div class="step-text">
+          <h3>The <em>Decision Boundary</em></h3>
+          <p>After training with a kernel, the SVM decision function in input space becomes curved — shaped entirely by the kernel geometry. Points close to support vectors (in kernel space) are attracted to one side; far points to the other.</p>
+          <p>The γ parameter of the RBF kernel controls the <em>scale</em> of the similarity. Large γ: only very nearby points count as similar → tight, jagged boundaries (risk of overfitting). Small γ: distant points still have influence → smoother, more global boundaries.</p>
+          <p>The C parameter controls the <em>margin softness</em>. High C: enforce correct classification at all costs (small margin). Low C: allow some misclassifications to get a wider, more generalising margin.</p>
+          <div class="math-block">
+            Decision: f(x) = Σᵢ αᵢ yᵢ K(xᵢ, x) + b<br>
+            Only support vectors have αᵢ > 0<br><br>
+            Large γ → narrow "influence radius" per point<br>
+            Small γ → wide "influence radius" → smoother
+          </div>
+          <div class="insight-box"><strong>Result:</strong> In the Sandbox, draw some circles and try RBF vs Linear. Watch how the boundary curves to fit the data — try adjusting C and switching kernels!</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">RBF kernel — curved decision boundary in 2D</div>
+          <div id="kernel-explain-plot3" style="height:300px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sandbox -->
+  <div class="mode-panel" id="kernel-sandbox">
+    <div class="two-col">
+      <div class="controls-panel">
+        <div class="card card-sm">
+          <div class="ctrl-label">Dataset</div>
+          <select class="select-styled" id="kernel-dataset" onchange="loadKernelDataset()">
+            <option value="circles">Circles</option>
+            <option value="moons">Moons</option>
+            <option value="xor">XOR Pattern</option>
+            <option value="blobs">Blobs</option>
+          </select>
+        </div>
+        <div class="card card-sm">
+          <div class="ctrl-label">Kernel <span class="ctrl-value" id="kernel-kernel-val">RBF</span></div>
+          <select class="select-styled" id="kernel-kernel" onchange="document.getElementById('kernel-kernel-val').textContent=this.options[this.selectedIndex].text">
+            <option value="rbf">RBF (Gaussian)</option>
+            <option value="poly">Polynomial</option>
+            <option value="linear">Linear</option>
+          </select>
+          <div class="divider"></div>
+          <div class="ctrl-label">C (regularisation) <span class="ctrl-value" id="kernel-c-val">1.0</span></div>
+          <input type="range" id="kernel-c" min="-2" max="2" step="0.1" value="0" oninput="document.getElementById('kernel-c-val').textContent=Math.pow(10,this.value).toFixed(2)">
+          <div class="divider"></div>
+          <div class="ctrl-label">Drawing Mode</div>
+          <div class="btn-row mt-8">
+            <button class="tool-btn active" id="draw-class0-btn" onclick="setDrawClass(0)">Class A (●)</button>
+            <button class="tool-btn" id="draw-class1-btn" onclick="setDrawClass(1)">Class B (■)</button>
+          </div>
+        </div>
+        <button id="kernel-classify-btn" class="btn btn-primary btn-full" onclick="runKernelClassify()">
+          <span id="kernel-run-icon">▶</span> Classify
+        </button>
+        <button class="btn btn-secondary btn-full" onclick="clearKernelPoints()">Clear Points</button>
+        <div class="card card-sm" id="kernel-stats" style="display:none">
+          <div class="ctrl-label">Results</div>
+          <div class="flex justify-between mt-8">
+            <span class="text-muted" style="font-size:0.82rem">Accuracy</span>
+            <span class="text-mono text-accent" id="kernel-acc">—</span>
+          </div>
+          <div class="flex justify-between mt-8">
+            <span class="text-muted" style="font-size:0.82rem">Support Vectors</span>
+            <span class="text-mono text-accent" id="kernel-sv">—</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="plot-container" style="position:relative;">
+          <div class="plot-title">Click anywhere to add points · then hit Classify</div>
+          <canvas id="kernel-canvas" width="700" height="380"
+            style="width:100%;height:380px;display:block;cursor:crosshair;border-radius:0 0 12px 12px;background:var(--surface);"
+            onclick="onKernelCanvasClick(event)"></canvas>
+        </div>
+        <div class="plot-container mt-12" id="kernel-3d-container" style="display:none">
+          <div class="plot-title">RBF Kernel Lift — 3D View (φ maps circles to separable planes)</div>
+          <div id="kernel-3d-plot" style="height:320px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="mode-panel" id="kernel-quiz">
+    <div class="quiz-container" id="kernel-quiz-container"></div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     PCA LAB
+════════════════════════════════════════════════════════════ -->
+<section class="lab-panel" id="lab-pca">
+  <div class="lab-header">
+    <div>
+      <div class="lab-title">Principal <em>Component</em> Analysis</div>
+      <div class="lab-subtitle">Find the directions of greatest variance and reduce dimensionality without losing structure</div>
+    </div>
+    <div class="mode-tabs" id="pca-mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('pca','explain')">① Explain</button>
+      <button class="mode-tab" onclick="switchMode('pca','sandbox')">② Sandbox</button>
+      <button class="mode-tab" onclick="switchMode('pca','quiz')">③ Quiz</button>
+    </div>
+  </div>
+
+  <!-- Explain -->
+  <div class="mode-panel active" id="pca-explain">
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-sm" onclick="pcaStep(-1)">←</button>
+      <div class="step-dots" id="pca-dots"></div>
+      <span class="step-counter" id="pca-step-counter">1 / 4</span>
+      <button class="btn btn-ghost btn-sm" onclick="pcaStep(1)">→</button>
+    </div>
+    <div class="step-content" id="pca-steps">
+
+      <div class="step-slide active" id="pca-s0">
+        <div class="step-text">
+          <h3>What PCA Does — The <em>Full Picture</em></h3>
+          <p><strong>Principal Component Analysis (PCA)</strong> is an unsupervised technique that compresses high-dimensional data by finding the directions of greatest spread. Given data with d features, PCA produces a new set of axes — the <em>principal components</em> — ranked by how much variance they capture.</p>
+          <p>Here is what PCA does, step by step: <strong>(1)</strong> Centre the data (subtract the mean of each feature). <strong>(2)</strong> Optionally standardise (divide by std dev) so no feature dominates due to scale. <strong>(3)</strong> Compute the covariance matrix Σ. <strong>(4)</strong> Find its eigenvectors — these are the principal components. <strong>(5)</strong> Project the data onto the top-k eigenvectors to get a k-dimensional representation.</p>
+          <p>The core idea: project data onto a unit vector u. The variance of the projected values equals uᵀΣu. PCA finds the u that maximises this — the direction of greatest spread.</p>
+          <div class="math-block">
+            Step 1: centre  X̃ = X − μ<br>
+            Step 2: covariance  Σ = (1/n) X̃ᵀX̃<br>
+            Step 3: eigendecompose  Σ = V Λ Vᵀ<br>
+            Step 4: project  Z = X̃ Vₖ  (keep top k cols)<br><br>
+            Result: Z is n×k — compressed representation
+          </div>
+          <div class="insight-box"><strong>Key property:</strong> The principal components are orthogonal — they capture completely independent directions of variation. PCA simultaneously compresses data AND removes correlations between features.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Two projection directions — the diagonal captures far more variance</div>
+          <div id="pca-explain-plot0" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="pca-s1">
+        <div class="step-text">
+          <h3>The <em>Covariance Matrix</em> and Eigenvectors</h3>
+          <p>The covariance matrix Σ is a d×d matrix where entry (i,j) measures how features i and j vary together. Diagonal entries are per-feature variances. Off-diagonal entries reveal correlations: if height and weight tend to increase together, their covariance is positive.</p>
+          <p>PCA solves the variance-maximisation problem by computing the <strong>eigendecomposition</strong> of Σ. Each eigenvector vᵢ is a principal component — a direction in feature space. Its corresponding eigenvalue λᵢ tells you exactly how much variance the data has in that direction. The eigenvectors are always orthogonal, so the principal components are always uncorrelated.</p>
+          <p>In the plot, the arrows show PC1 (longest — most variance) and PC2 (shorter, perpendicular). Rotating the axes to align with these arrows is what PCA does: it finds a new coordinate system where the axes point along the data's natural directions of spread.</p>
+          <div class="math-block">
+            Covariance matrix:  Σ = (1/n) X̃ᵀX̃<br>
+            Eigendecomposition: Σ vᵢ = λᵢ vᵢ<br><br>
+            λ₁ ≥ λ₂ ≥ ... ≥ λ_d ≥ 0<br>
+            v₁·v₂ = 0  (orthogonal — uncorrelated)<br><br>
+            Variance in direction vᵢ = λᵢ<br>
+            Total variance = Σ λᵢ = trace(Σ)
+          </div>
+          <div class="insight-box"><strong>Why eigenvectors?</strong> For any direction u, variance = uᵀΣu. This is maximised when u is the top eigenvector of Σ — a fundamental result from linear algebra called the Rayleigh quotient theorem.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">PC arrows — length ∝ √eigenvalue (variance in that direction)</div>
+          <div id="pca-explain-plot1" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="pca-s2">
+        <div class="step-text">
+          <h3>Projection <em>and</em> Reconstruction</h3>
+          <p>Once we have the principal components, we can use them to compress data. We project each point onto the top-k components to get a k-dimensional representation. This is the <em>encoding</em> step. To get back an approximation of the original data, we project back — this is the <em>decoding</em> step.</p>
+          <p>The difference between the original and reconstructed points is the <strong>reconstruction error</strong>. Every component we drop contributes to this error by an amount equal to its eigenvalue. So if we keep components that together explain 95% of total variance, we lose only 5% — a huge compression with minimal information loss.</p>
+          <p>In the Sandbox, you can see this live: with a 5D dataset and only 2 components retained, the reconstruction in 2D still captures most of the structure because the data has strong correlations between features.</p>
+          <div class="math-block">
+            Encode:  z = Vₖᵀ (x − μ)    (n×d → n×k)<br>
+            Decode:  x̂ = Vₖ z + μ         (n×k → n×d)<br><br>
+            Reconstruction error = ‖x − x̂‖²<br>
+                                 = Σᵢ>ₖ λᵢ  (sum of dropped eigenvalues)<br><br>
+            Important: standardise first! (z-score each feature)
+          </div>
+          <div class="insight-box"><strong>Trade-off:</strong> More components → less error, less compression. The optimal k depends on your downstream task and acceptable information loss.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Reconstruction error — lines show information lost</div>
+          <div id="pca-explain-plot2" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="pca-s3">
+        <div class="step-text">
+          <h3>Choosing <em>k</em> — The Scree Plot</h3>
+          <p>How many components should we keep? The <strong>scree plot</strong> plots eigenvalues (or explained variance ratios) from largest to smallest. Look for the "elbow" — the point where adding another component gives diminishing returns.</p>
+          <p>A more principled approach is the <strong>eigengap heuristic</strong>: choose k where there is the largest jump (gap) between consecutive eigenvalues λₖ and λₖ₊₁. A big gap means PC k captures something structurally different from the noise-level components beyond it.</p>
+          <p>In practice, people often target a <em>cumulative explained variance threshold</em> — e.g., keep enough components to explain 95% of total variance. In the Sandbox you can watch this threshold update live as you drag the component slider.</p>
+          <div class="math-block">
+            Explained ratio:  rᵢ = λᵢ / Σⱼ λⱼ<br>
+            Cumulative:       Rₖ = Σᵢ₌₁ᵏ rᵢ<br><br>
+            Common thresholds: 90%, 95%, 99%<br>
+            Eigengap rule: choose k where λₖ/λₖ₊₁ is largest<br><br>
+            For correlated 5D data, often 1–2 PCs suffice!
+          </div>
+          <div class="insight-box"><strong>Now try it:</strong> In the Sandbox, load "Correlated 5D" and watch the scree plot. PC1 alone often explains 70–80% of variance. That's the power of PCA on correlated data.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Scree plot — explained variance per component</div>
+          <div id="pca-explain-plot3" style="height:300px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sandbox -->
+  <div class="mode-panel" id="pca-sandbox">
+    <!-- Controls row across the top -->
+    <div class="card card-sm" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;">
+      <div style="min-width:180px">
+        <div class="ctrl-label">Dataset</div>
+        <select class="select-styled" id="pca-dataset" onchange="loadPCADataset()" style="margin-top:4px">
+          <option value="correlated">Correlated 5D</option>
+          <option value="faces">Faces 6D (2 factors)</option>
+          <option value="elongated">Elongated 4D</option>
+          <option value="isotropic">Isotropic 4D (no structure)</option>
+        </select>
+      </div>
+      <div style="min-width:220px;flex:1">
+        <div class="ctrl-label" style="display:flex;justify-content:space-between">
+          <span>Components to keep</span>
+          <span class="ctrl-value" id="pca-k-val">2</span>
+        </div>
+        <input type="range" id="pca-k" min="1" max="6" step="1" value="2" style="margin-top:6px;width:100%"
+          oninput="document.getElementById('pca-k-val').textContent=this.value; runPCA()">
+      </div>
+      <div style="min-width:260px">
+        <div class="ctrl-label">Information Retained</div>
+        <div style="height:10px;background:var(--border2);border-radius:5px;margin-top:6px;overflow:hidden">
+          <div id="pca-info-bar" style="height:100%;background:var(--accent);border-radius:5px;transition:width 0.4s ease;width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-size:0.72rem;color:var(--muted)">0%</span>
+          <span id="pca-info-pct" style="font-size:0.8rem;font-family:var(--mono);color:var(--accent);font-weight:600">—</span>
+          <span style="font-size:0.72rem;color:var(--muted)">100%</span>
+        </div>
+      </div>
+    </div>
+    <!-- Variance bars row -->
+    <div class="card card-sm" style="margin-bottom:16px">
+      <div class="ctrl-label" style="margin-bottom:8px">Variance Explained per Component</div>
+      <div class="variance-bars" id="pca-var-bars"></div>
+    </div>
+    <!-- Plots: top row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="plot-container">
+        <div class="plot-title" id="pca-orig-title">Data in PC Space</div>
+        <div id="pca-orig-plot" style="height:300px"></div>
+      </div>
+      <div class="plot-container">
+        <div class="plot-title">PC Projection (coloured by PC3 if available)</div>
+        <div id="pca-proj-plot" style="height:300px"></div>
+      </div>
+      <div class="plot-container">
+        <div class="plot-title">Scree Plot — variance per component &amp; cumulative</div>
+        <div id="pca-scree-plot" style="height:300px"></div>
+      </div>
+    </div>
+    <!-- Plots: bottom row -->
+    <div class="plot-container">
+      <div class="plot-title" id="pca-recon-title">Reconstruction quality</div>
+      <div id="pca-recon-plot" style="height:280px"></div>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="mode-panel" id="pca-quiz">
+    <div class="quiz-container" id="pca-quiz-container"></div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     SPECTRAL CLUSTERING LAB
+════════════════════════════════════════════════════════════ -->
+<section class="lab-panel" id="lab-spectral">
+  <div class="lab-header">
+    <div>
+      <div class="lab-title"><em>Spectral</em> Clustering</div>
+      <div class="lab-subtitle">Graph-based clustering that finds non-convex structure by operating on eigenvectors of the Laplacian</div>
+    </div>
+    <div class="mode-tabs" id="spectral-mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('spectral','explain')">① Explain</button>
+      <button class="mode-tab" onclick="switchMode('spectral','sandbox')">② Sandbox</button>
+      <button class="mode-tab" onclick="switchMode('spectral','quiz')">③ Quiz</button>
+    </div>
+  </div>
+
+  <!-- Explain -->
+  <div class="mode-panel active" id="spectral-explain">
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-sm" onclick="spectralStep(-1)">←</button>
+      <div class="step-dots" id="spectral-dots"></div>
+      <span class="step-counter" id="spectral-step-counter">1 / 4</span>
+      <button class="btn btn-ghost btn-sm" onclick="spectralStep(1)">→</button>
+    </div>
+    <div class="step-content" id="spectral-steps">
+
+      <div class="step-slide active" id="spectral-s0">
+        <div class="step-text">
+          <h3>Why K-Means <em>Fails</em></h3>
+          <p>K-means is a great algorithm, but it has a fundamental geometric limitation: it partitions the space into <em>Voronoi regions</em> — convex regions defined by which centroid is nearest. This means k-means can only find clusters that are roughly convex (blob-shaped).</p>
+          <p>Consider two concentric circles. Their centroids coincide at the origin. K-means, assigning each point to its nearest centroid, will draw a vertical or diagonal line — mixing inner and outer ring points in both clusters. It has no concept of "this point is topologically surrounded by its own group."</p>
+          <p>The same failure occurs with interlocking crescents (moons), spirals, or any dataset where clusters are non-convex but <em>locally connected</em>. We need an algorithm that respects topology and connectivity, not just Euclidean distance to a centroid.</p>
+          <div class="math-block">
+            K-means objective:<br>
+            min_{C₁,...,Cₖ} Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²<br><br>
+            Assigns each point to its nearest centroid μₖ<br>
+            → Only works for convex, roughly spherical clusters<br>
+            → Fails for rings, spirals, moons, manifolds
+          </div>
+          <div class="insight-box"><strong>The fix:</strong> Instead of asking "which centroid is nearest?", ask "which points are <em>connected</em> to me through a path of similar neighbours?" This is the graph-theoretic view.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">K-means splits the rings incorrectly (vertical boundary)</div>
+          <div id="spectral-explain-plot0" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="spectral-s1">
+        <div class="step-text">
+          <h3>The <em>Affinity Graph</em></h3>
+          <p>The first step of spectral clustering builds a <strong>similarity graph</strong>. Each data point becomes a node. Edge weights encode how similar two points are — high weight for nearby points, near-zero for distant ones.</p>
+          <p>The most common choice is the <strong>RBF (Gaussian) kernel</strong> as the affinity function. Points within the same ring will have high mutual similarity weights. Points on different rings are far apart and get near-zero weights — they're essentially disconnected in the graph.</p>
+          <p>The parameter γ controls how quickly similarity decays with distance. Large γ: only very close points are considered similar (sparse, local connections). Small γ: more distant points still have some similarity (denser graph). Getting γ right is crucial — in the Sandbox you can tune it live.</p>
+          <div class="math-block">
+            Affinity:  Wᵢⱼ = exp(−γ ‖xᵢ − xⱼ‖²)<br>
+            (Set Wᵢᵢ = 0, i.e. no self-loops)<br><br>
+            Large γ: only near neighbours connected<br>
+            Small γ: wider neighbourhood, denser graph<br><br>
+            Alternative: k-nearest-neighbour graph (k-NN)
+          </div>
+          <div class="insight-box"><strong>Key intuition:</strong> Points in the same ring are locally connected through chains of nearby neighbours. Points across rings are globally far. The graph captures this; raw distance to a centroid doesn't.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Affinity matrix — bright = similar, dark = distant</div>
+          <div id="spectral-explain-plot1" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="spectral-s2">
+        <div class="step-text">
+          <h3>The Graph <em>Laplacian</em></h3>
+          <p>From the affinity matrix W, we construct the <strong>graph Laplacian</strong> L = D − W, where D is the diagonal degree matrix (Dᵢᵢ = Σⱼ Wᵢⱼ). The Laplacian is the central mathematical object: its eigenvectors reveal cluster structure.</p>
+          <p>There's a deep theorem here: the number of connected components in the graph equals the number of <em>zero eigenvalues</em> of L. For two perfectly disconnected rings, L has exactly two zero eigenvalues. In practice, clusters are noisy, so we look at the <strong>eigengap</strong> — the largest jump between consecutive eigenvalues tells us k.</p>
+          <p>In practice we use the <strong>normalised Laplacian</strong> Lₛ = D⁻½ L D⁻½ = I − D⁻½ W D⁻½. This corrects for degree heterogeneity and produces much better clusters.</p>
+          <div class="math-block">
+            Unnormalised:  L = D − W<br>
+            Normalised:    Lₛ = D⁻½ L D⁻½ = I − D⁻½ W D⁻½<br><br>
+            Theorem: rank(L) = n − (# connected components)<br>
+            → # zero eigenvalues = # components<br><br>
+            Eigengap heuristic: choose k = argmax (λₖ₊₁ − λₖ)
+          </div>
+          <div class="insight-box"><strong>Reading the spectrum:</strong> If you see eigenvalues [0.00, 0.01, 0.54, 0.88, ...], the gap after the second value tells you k=2. In the Sandbox, the eigenvalue bar chart highlights this gap.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Eigenvalue spectrum — eigengap reveals k=2</div>
+          <div id="spectral-explain-plot2" style="height:300px"></div>
+        </div>
+      </div>
+
+      <div class="step-slide" id="spectral-s3">
+        <div class="step-text">
+          <h3>Spectral <em>Embedding</em> + K-Means</h3>
+          <p>The final step assembles the algorithm. We stack the first k eigenvectors of Lₛ as columns: U = [u₁ | u₂ | ... | uₖ]. Each row of U is a k-dimensional <em>spectral embedding</em> of the corresponding data point.</p>
+          <p>The magic: in this embedding space, points that are graph-connected (in the same cluster) map to similar locations, while disconnected points are far apart — regardless of their positions in the original space. The two concentric rings, which overlap in 2D, become two well-separated clouds in the spectral embedding!</p>
+          <p>We then row-normalise U (so each point lies on the unit sphere) and apply standard k-means. Because the spectral embedding has already done the hard work, k-means easily finds clean partitions. The whole algorithm runs in O(n² + n·k) with sparse approximations.</p>
+          <div class="math-block">
+            1. Compute affinity W  (RBF kernel)<br>
+            2. Compute Lₛ = D⁻½(D−W)D⁻½<br>
+            3. Find k smallest eigenvectors of Lₛ → U ∈ ℝⁿˣᵏ<br>
+            4. Row-normalise: Ũᵢ = Uᵢ / ‖Uᵢ‖<br>
+            5. K-means on rows of Ũ<br><br>
+            Complexity: O(n²) affinity + O(n²k) eigendecomposition
+          </div>
+          <div class="insight-box"><strong>Now try it:</strong> In the Sandbox, load "Concentric Circles", hit Cluster, and compare the two plots. Spectral finds the rings; k-means splits them down the middle.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Spectral embedding — rings become separable point clouds</div>
+          <div id="spectral-explain-plot3" style="height:300px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sandbox -->
+  <div class="mode-panel" id="spectral-sandbox">
+    <!-- Controls row -->
+    <div class="card card-sm" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;">
+      <div style="min-width:180px">
+        <div class="ctrl-label">Dataset</div>
+        <select class="select-styled" id="spectral-dataset" onchange="loadSpectralDataset()" style="margin-top:4px">
+          <option value="circles">Concentric Circles</option>
+          <option value="moons">Two Moons</option>
+          <option value="spiral">Spirals</option>
+          <option value="blobs">Gaussian Blobs</option>
+        </select>
+      </div>
+      <div style="min-width:140px">
+        <div class="ctrl-label" style="display:flex;justify-content:space-between"><span>Clusters (k)</span><span class="ctrl-value" id="spectral-k-val">2</span></div>
+        <input type="range" id="spectral-k" min="2" max="5" step="1" value="2" style="margin-top:6px;width:100%"
+          oninput="document.getElementById('spectral-k-val').textContent=this.value">
+      </div>
+      <div style="min-width:220px">
+        <div class="ctrl-label" style="display:flex;justify-content:space-between"><span>Gamma (γ)</span><span class="ctrl-value" id="spectral-g-val">20.0</span></div>
+        <input type="range" id="spectral-g" min="-1" max="2.5" step="0.1" value="1.3" style="margin-top:6px;width:100%"
+          oninput="document.getElementById('spectral-g-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(1)">
+      </div>
+      <button id="spectral-cluster-btn" class="btn btn-primary" onclick="runSpectralCluster()">
+        <span id="spectral-run-icon">▶</span> Cluster
+      </button>
+    </div>
+    <!-- Row 1: two main clustering plots -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="plot-container">
+        <div class="plot-title" style="color:var(--accent)">✓ Spectral Clustering</div>
+        <div id="spectral-plot-spectral" style="height:380px"></div>
+      </div>
+      <div class="plot-container">
+        <div class="plot-title" style="color:#f87171">✗ K-Means (comparison)</div>
+        <div id="spectral-plot-kmeans" style="height:380px"></div>
+      </div>
+    </div>
+    <!-- Row 2: three diagnostic plots full width -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div class="plot-container">
+        <div class="ctrl-label" style="padding:12px 16px 2px">Eigenvalue Spectrum</div>
+        <div style="font-size:0.72rem;color:var(--muted);padding:0 16px 4px">eigengap → natural k</div>
+        <div id="spectral-eigenval-mini" style="height:240px"></div>
+      </div>
+      <div class="plot-container">
+        <div class="ctrl-label" style="padding:12px 16px 2px">Spectral Embedding</div>
+        <div style="font-size:0.72rem;color:var(--muted);padding:0 16px 4px">clusters separate here</div>
+        <div id="spectral-embed-mini" style="height:240px"></div>
+      </div>
+      <div class="plot-container">
+        <div class="ctrl-label" style="padding:12px 16px 2px">Affinity Matrix</div>
+        <div style="font-size:0.72rem;color:var(--muted);padding:0 16px 4px">block structure = clusters</div>
+        <div id="spectral-affinity-plot" style="height:240px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="mode-panel" id="spectral-quiz">
+    <div class="quiz-container" id="spectral-quiz-container"></div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     GNN LAB
+════════════════════════════════════════════════════════════ -->
+<section class="lab-panel" id="lab-gnn">
+  <div class="lab-header">
+    <div>
+      <div class="lab-title">Graph <em>Neural</em> Networks</div>
+      <div class="lab-subtitle">Learn node representations by aggregating information from neighbours — message passing in action</div>
+    </div>
+    <div class="mode-tabs" id="gnn-mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('gnn','explain')">① Explain</button>
+      <button class="mode-tab" onclick="switchMode('gnn','sandbox')">② Sandbox</button>
+      <button class="mode-tab" onclick="switchMode('gnn','quiz')">③ Quiz</button>
+    </div>
+  </div>
+
+  <!-- Explain -->
+  <div class="mode-panel active" id="gnn-explain">
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-sm" onclick="gnnStep(-1)">←</button>
+      <div class="step-dots" id="gnn-dots"></div>
+      <span class="step-counter" id="gnn-step-counter">1 / 4</span>
+      <button class="btn btn-ghost btn-sm" onclick="gnnStep(1)">→</button>
+    </div>
+    <div class="step-content" id="gnn-steps">
+
+      <div class="step-slide active" id="gnn-s0">
+        <div class="step-text">
+          <h3>Why Graphs <em>Matter</em></h3>
+          <p>Much of the world's most interesting data is structured as graphs: social networks (users and friendships), molecules (atoms and bonds), citation networks (papers and references), road maps, protein interaction networks, and more.</p>
+          <p>Standard deep learning architectures — CNNs, RNNs, MLPs — are designed for grids (images), sequences (text), or fixed-size vectors. They break down on graphs because: (1) graphs have variable structure — no two graphs have the same number of nodes or edges; (2) there is no natural node ordering — permuting node labels shouldn't change the model's output (permutation invariance).</p>
+          <p>The core insight of GNNs: a node's identity and role in the graph can be learned by looking at its <em>neighbourhood</em>. A person in a social network is partly defined by who they know. An atom in a molecule is partly defined by what atoms it's bonded to. GNNs formalise this idea.</p>
+          <div class="math-block">
+            Graph G = (V, E)<br>
+            V: nodes  (with features xᵢ ∈ ℝᵈ)<br>
+            E: edges  (connections, can be weighted)<br>
+            A ∈ {0,1}ⁿˣⁿ: adjacency matrix<br><br>
+            Goal: learn embedding hᵢ for each node i<br>
+            that captures features AND graph structure
+          </div>
+          <div class="insight-box"><strong>Key requirement:</strong> The model must be <em>permutation-invariant</em> — renaming nodes A→B→C or changing their order shouldn't change predictions. Standard MLPs fail this; GNNs satisfy it by design.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Graph with node features (bars inside each node)</div>
+          <canvas id="gnn-explain-canvas0" width="520" height="300" style="display:block; border-radius:0 0 12px 12px; background: var(--surface);"></canvas>
+        </div>
+      </div>
+
+      <div class="step-slide" id="gnn-s1">
+        <div class="step-text">
+          <h3><em>Message Passing</em></h3>
+          <p>The core operation in GNNs is <strong>message passing</strong>. It has three steps that run simultaneously for all nodes:</p>
+          <p><strong>1. Message:</strong> Each node i computes a message to send to each of its neighbours. The simplest message is just the node's current feature vector.</p>
+          <p><strong>2. Aggregate:</strong> Each node collects all incoming messages from its neighbours and combines them — typically by taking their sum, mean, or max. This is the neighbourhood aggregation step.</p>
+          <p><strong>3. Update:</strong> Each node combines its aggregated neighbourhood information with its own current representation, passing it through a learned transformation (a small neural network layer) to produce its new embedding.</p>
+          <p>This process repeats for L layers. After L rounds, each node's embedding has "seen" information from all nodes within L hops — its L-hop neighbourhood.</p>
+          <div class="math-block">
+            Message:    mⱼ→ᵢ = φ(hⱼ)      (e.g. hⱼ itself)<br>
+            Aggregate:  aᵢ = AGG({mⱼ→ᵢ : j ∈ N(i)})<br>
+            Update:     hᵢ' = σ(W · CONCAT(hᵢ, aᵢ))<br><br>
+            L layers → each node sees L-hop neighbourhood<br>
+            Receptive field grows by 1 hop per layer
+          </div>
+          <div class="insight-box"><strong>Analogy:</strong> Think of rumour spreading. After 1 round, you've heard from your direct friends. After 2 rounds, you've heard from friends-of-friends. GNNs propagate information the same way.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Dashed arrows show messages flowing to the highlighted node</div>
+          <canvas id="gnn-explain-canvas1" width="520" height="300" style="display:block; border-radius:0 0 12px 12px; background: var(--surface);"></canvas>
+        </div>
+      </div>
+
+      <div class="step-slide" id="gnn-s2">
+        <div class="step-text">
+          <h3>The <em>Matrix Form</em> (GCN)</h3>
+          <p>The Graph Convolutional Network (GCN) by Kipf & Welling (2017) is the most widely used GNN variant. It implements message passing as a single matrix operation across all nodes simultaneously — efficient and elegant.</p>
+          <p>The key matrix is Â = D̂⁻¹(A + I): the adjacency matrix with added self-loops (so each node includes itself), normalised by degree (so aggregation is a weighted average rather than a sum, preventing scale issues for high-degree nodes).</p>
+          <p>Multiplying by Â effectively replaces each node's features with a weighted average of its own features and its neighbours' features. The learnable weight matrix W then transforms this aggregated representation. After applying a non-linearity σ (e.g. ReLU), we have the next layer's embeddings.</p>
+          <div class="math-block">
+            GCN update rule:<br>
+            H⁽ˡ⁺¹⁾ = σ( Â H⁽ˡ⁾ W⁽ˡ⁾ )<br><br>
+            Â = D̂⁻¹(A + I)  (normalised adj. + self-loops)<br>
+            H⁽ˡ⁾ ∈ ℝⁿˣᵈˡ:  node features at layer l<br>
+            W⁽ˡ⁾ ∈ ℝᵈˡˣᵈˡ⁺¹: learnable weights<br>
+            σ: activation (ReLU, tanh, etc.)
+          </div>
+          <div class="insight-box"><strong>Why Â H is clever:</strong> (Â H)ᵢ is a weighted average of node i and all its neighbours' feature vectors. W learns what linear combination of these averaged features to extract. The graph structure and the learning are cleanly separated.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Â encodes which nodes average with whom (small matrix shown)</div>
+          <canvas id="gnn-explain-canvas2" width="520" height="300" style="display:block; border-radius:0 0 12px 12px; background: var(--surface);"></canvas>
+        </div>
+      </div>
+
+      <div class="step-slide" id="gnn-s3">
+        <div class="step-text">
+          <h3><em>Tasks</em> and Applications</h3>
+          <p>GNNs can be applied at three different levels of the graph, each corresponding to different real-world tasks:</p>
+          <p><strong>Node-level:</strong> Predict a label for each node using its final embedding. Example: classify users in a social network as bots vs. humans, predict which paper belongs to which research field.</p>
+          <p><strong>Edge-level:</strong> Predict properties of pairs of nodes — e.g. whether an edge should exist between them. Example: recommend friends, predict drug-drug interactions, knowledge graph completion.</p>
+          <p><strong>Graph-level:</strong> Aggregate all node embeddings into a single graph-level representation and predict a label for the whole graph. Example: predict whether a molecule is toxic, classify a circuit as functional, identify graph isomorphism.</p>
+          <p>For graph-level tasks, a <em>readout function</em> aggregates node embeddings: typically global sum, mean, or max pooling, or more sophisticated hierarchical pooling (DiffPool, MinCutPool).</p>
+          <div class="math-block">
+            Node classification:   y_i = f(h_i)<br>
+            Link prediction:       ŷ_ij = g(h_i, h_j)  e.g. h_i · h_j<br>
+            Graph classification:  ŷ_G = MLP(READOUT({h_i}))<br><br>
+            READOUT options: Σᵢhᵢ, (1/n)Σᵢhᵢ, maxᵢhᵢ,<br>
+                             or learned hierarchical pooling
+          </div>
+          <div class="insight-box"><strong>Try it:</strong> In the Sandbox, load a preset, run the forward pass, and see how node embeddings (shown in the scatter plot) cluster nodes with similar neighbourhood structure together.</div>
+        </div>
+        <div class="plot-container">
+          <div class="plot-title">Three levels: node, edge, and graph tasks</div>
+          <canvas id="gnn-explain-canvas3" width="520" height="300" style="display:block; border-radius:0 0 12px 12px; background: var(--surface);"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sandbox -->
+  <div class="mode-panel" id="gnn-sandbox">
+    <div class="two-col">
+      <div class="controls-panel">
+        <div class="card card-sm">
+          <div class="ctrl-label">Preset Graph</div>
+          <select class="select-styled" id="gnn-preset" onchange="loadGNNPreset()">
+            <option value="network">Small Network (6 nodes)</option>
+            <option value="star">Star Graph</option>
+            <option value="chain">Chain Graph</option>
+          </select>
+          <div class="divider"></div>
+          <div class="ctrl-label">Drawing Tool</div>
+          <div class="btn-row mt-8">
+            <button class="tool-btn active" id="gnn-tool-node" onclick="setGNNTool('node')">Add Node</button>
+            <button class="tool-btn" id="gnn-tool-edge" onclick="setGNNTool('edge')">Add Edge</button>
+            <button class="tool-btn" id="gnn-tool-delete" onclick="setGNNTool('delete')">Delete</button>
+          </div>
+        </div>
+        <div class="card card-sm">
+          <div class="ctrl-label">GNN Layers <span class="ctrl-value" id="gnn-layers-val">2</span></div>
+          <input type="range" id="gnn-layers" min="1" max="3" step="1" value="2"
+            oninput="document.getElementById('gnn-layers-val').textContent=this.value">
+        </div>
+        <button id="gnn-forward-btn" class="btn btn-primary btn-full" onclick="runGNNForward()">
+          <span id="gnn-run-icon">▶</span> Run Forward Pass
+        </button>
+        <button class="btn btn-secondary btn-full" onclick="animateMessagePassing()">⟳ Animate Messages</button>
+        <button class="btn btn-ghost btn-full" onclick="clearGNNGraph()">Clear Graph</button>
+        <div class="card card-sm" id="gnn-layer-nav" style="display:none">
+          <div class="ctrl-label">View Layer</div>
+          <div class="btn-row mt-8" id="gnn-layer-btns"></div>
+          <div style="margin-top:6px;font-size:0.75rem;color:var(--muted2)" id="gnn-layer-desc">Layer 0 = input features</div>
+        </div>
+        <div class="card card-sm">
+          <div class="ctrl-label">Message Trace</div>
+          <div class="msg-trace" id="gnn-msg-trace">
+            <div style="color:var(--muted);font-size:0.8rem;padding:8px 0">Run forward pass to see trace</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="plot-container">
+          <div class="plot-title" id="gnn-canvas-title">Graph · node colour = embedding value after forward pass · click to add nodes/edges</div>
+          <canvas id="gnn-canvas" width="680" height="340"
+            style="width:100%;height:340px;display:block;border-radius:0 0 12px 12px;background:var(--surface);"
+            onclick="onGNNCanvasClick(event)" onmousemove="onGNNCanvasHover(event)"></canvas>
+        </div>
+        <div class="two-col-eq">
+          <div class="plot-container">
+            <div class="plot-title">Node Embeddings — 2D PCA of final layer (nodes that aggregate similarly cluster together)</div>
+            <div id="gnn-embedding-plot" style="height:220px"></div>
+          </div>
+          <div class="plot-container">
+            <div class="plot-title">Embedding Heatmap — each row = one node, each column = one hidden dimension</div>
+            <div id="gnn-heatmap-plot" style="height:220px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="mode-panel" id="gnn-quiz">
+    <div class="quiz-container" id="gnn-quiz-container"></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// GLOBALS & THEMING
+// ═══════════════════════════════════════════════════════════════
+const LAB_ACCENTS = {
+  kernel:   '#7c6ef7',
+  pca:      '#34d399',
+  spectral: '#f59e0b',
+  gnn:      '#f87171'
+};
+const PALETTE = {
+  bg:       '#0d0f14',
+  surface:  '#13161e',
+  surface2: '#1a1e28',
+  border:   '#252a38',
+  text:     '#e8eaf0',
+  muted:    '#6b7280',
+  muted2:   '#9ca3af'
+};
+const CLASS_COLORS = ['#7c6ef7','#f87171'];
+const CLUSTER_COLORS = ['#7c6ef7','#34d399','#f59e0b','#f87171','#60a5fa'];
+
+let currentLab = 'kernel';
+
+// Plotly default layout
+function baseLayout(overrides = {}) {
+  return {
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: PALETTE.surface,
+    font: { family: 'DM Sans, sans-serif', color: PALETTE.muted2, size: 11 },
+    margin: { l: 40, r: 16, t: 10, b: 36 },
+    xaxis: { gridcolor: PALETTE.border, zerolinecolor: PALETTE.border2, color: PALETTE.muted },
+    yaxis: { gridcolor: PALETTE.border, zerolinecolor: PALETTE.border2, color: PALETTE.muted },
+    showlegend: false,
+    ...overrides
+  };
+}
+const plotConfig = { displayModeBar: false, responsive: true };
+
+// ═══════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════
+function switchLab(lab) {
+  currentLab = lab;
+  document.querySelectorAll('.lab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.lab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('lab-'+lab).classList.add('active');
+  document.querySelector(`[data-lab="${lab}"]`).classList.add('active');
+  // Update CSS accent variable
+  const accent = LAB_ACCENTS[lab];
+  document.documentElement.style.setProperty('--accent', accent);
+  document.documentElement.style.setProperty('--glow', hexToRgba(accent, 0.15));
+  document.getElementById('logo-dot').style.color = accent;
+  // Init lab on first visit
+  if (lab === 'kernel' && !kernelInitialized) initKernelLab();
+  if (lab === 'pca' && !pcaInitialized) initPCALab();
+  if (lab === 'spectral' && !spectralInitialized) initSpectralLab();
+  if (lab === 'gnn' && !gnnInitialized) initGNNLab();
+}
+
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function switchMode(lab, mode) {
+  document.querySelectorAll(`#lab-${lab} .mode-panel`).forEach(p => p.classList.remove('active'));
+  document.querySelectorAll(`#${lab}-mode-tabs .mode-tab`).forEach(t => t.classList.remove('active'));
+  document.getElementById(`${lab}-${mode}`).classList.add('active');
+  event.target.classList.add('active');
+  if (mode === 'quiz') initQuiz(lab);
+  // Load sandbox data on first visit
+  if (mode === 'sandbox') {
+    if (lab === 'pca' && pcaInitialized && !pcaResult) loadPCADataset();
+    if (lab === 'spectral' && spectralInitialized && !spectralData) loadSpectralDataset();
+  }
+  // Resize all Plotly plots after transition so they render at full size
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const panel = document.getElementById(`${lab}-${mode}`);
+      if (panel) panel.querySelectorAll('.js-plotly-plot').forEach(el => {
+        try { Plotly.Plots.resize(el); } catch(e) {}
+      });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP NAVIGATION (shared)
+// ═══════════════════════════════════════════════════════════════
+const stepState = { kernel: 0, pca: 0, spectral: 0, gnn: 0 };
+const stepCounts = { kernel: 4, pca: 4, spectral: 4, gnn: 4 };
+
+function buildDots(lab) {
+  const container = document.getElementById(lab+'-dots');
+  container.innerHTML = '';
+  for (let i = 0; i < stepCounts[lab]; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goToStep(lab, i);
+    container.appendChild(d);
+  }
+}
+
+function goToStep(lab, step) {
+  const slides = document.querySelectorAll(`#${lab}-steps .step-slide`);
+  const dots = document.querySelectorAll(`#${lab}-dots .step-dot`);
+  const prev = stepState[lab];
+  stepState[lab] = Math.max(0, Math.min(step, stepCounts[lab] - 1));
+  slides[prev].classList.remove('active');
+  slides[stepState[lab]].classList.add('active');
+  dots.forEach((d, i) => {
+    d.classList.remove('active','done');
+    if (i === stepState[lab]) d.classList.add('active');
+    else if (i < stepState[lab]) d.classList.add('done');
+  });
+  document.getElementById(lab+'-step-counter').textContent = `${stepState[lab]+1} / ${stepCounts[lab]}`;
+  renderExplainPlot(lab, stepState[lab]);
+}
+
+function kernelStep(d) { goToStep('kernel', stepState.kernel + d); }
+function pcaStep(d)     { goToStep('pca',    stepState.pca    + d); }
+function spectralStep(d){ goToStep('spectral',stepState.spectral+d);}
+function gnnStep(d)     { goToStep('gnn',    stepState.gnn    + d); }
+
+// ═══════════════════════════════════════════════════════════════
+// KERNEL TRICK LAB — canvas-based sandbox
+// ═══════════════════════════════════════════════════════════════
+let kernelInitialized = false;
+let kernelPoints = [];   // [[x, y, label], ...]
+let drawClass = 0;
+let kernelBoundary = null;  // last classify result
+
+// Data coordinate range (set when dataset loads)
+let kViewport = { xMin: -2, xMax: 2, yMin: -2, yMax: 2 };
+
+function initKernelLab() {
+  kernelInitialized = true;
+  buildDots('kernel');
+  renderExplainPlot('kernel', 0);
+  loadKernelDataset();
+}
+
+function setDrawClass(c) {
+  drawClass = c;
+  document.getElementById('draw-class0-btn').classList.toggle('active', c === 0);
+  document.getElementById('draw-class1-btn').classList.toggle('active', c === 1);
+}
+
+async function loadKernelDataset() {
+  const dataset = document.getElementById('kernel-dataset').value;
+  const res = await fetch('/api/kernel/dataset', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ dataset })
+  });
+  const data = await res.json();
+  kernelPoints = data.points;
+  kernelBoundary = null;
+  // Set viewport from data range with padding
+  const xs = kernelPoints.map(p=>p[0]), ys = kernelPoints.map(p=>p[1]);
+  const pad = 0.5;
+  kViewport = { xMin: Math.min(...xs)-pad, xMax: Math.max(...xs)+pad,
+                yMin: Math.min(...ys)-pad, yMax: Math.max(...ys)+pad };
+  drawKernelCanvas();
+}
+
+function onKernelCanvasClick(e) {
+  const canvas = document.getElementById('kernel-canvas');
+  const rect = canvas.getBoundingClientRect();
+  // Map pixel → data coords
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top)  / rect.height;
+  const x = kViewport.xMin + px * (kViewport.xMax - kViewport.xMin);
+  const y = kViewport.yMax - py * (kViewport.yMax - kViewport.yMin);  // flip y
+  kernelPoints.push([x, y, drawClass]);
+  kernelBoundary = null;
+  drawKernelCanvas();
+}
+
+function dataToCanvas(x, y, canvas) {
+  const px = (x - kViewport.xMin) / (kViewport.xMax - kViewport.xMin) * canvas.width;
+  const py = (1 - (y - kViewport.yMin) / (kViewport.yMax - kViewport.yMin)) * canvas.height;
+  return [px, py];
+}
+
+function drawKernelCanvas() {
+  const canvas = document.getElementById('kernel-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = PALETTE.surface;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw faint grid
+  ctx.strokeStyle = PALETTE.border;
+  ctx.lineWidth = 0.5;
+  for (let gx = Math.ceil(kViewport.xMin); gx <= Math.floor(kViewport.xMax); gx++) {
+    const [px] = dataToCanvas(gx, 0, canvas);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+  }
+  for (let gy = Math.ceil(kViewport.yMin); gy <= Math.floor(kViewport.yMax); gy++) {
+    const [, py] = dataToCanvas(0, gy, canvas);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+  }
+
+  // Draw decision boundary as pixel grid
+  if (kernelBoundary) {
+    const { labels, n, x_min, x_max, y_min, y_max } = kernelBoundary;
+    const cellW = W / n, cellH = H / n;
+    // Map grid coords to canvas coords
+    const col0 = hexToRgba(CLASS_COLORS[0], 0.18);
+    const col1 = hexToRgba(CLASS_COLORS[1], 0.18);
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        const lbl = labels[row * n + col];
+        // Convert grid data coords to canvas pixels
+        const gdx = x_min + (col / n) * (x_max - x_min);
+        const gdy = y_max - (row / n) * (y_max - y_min);
+        const [cx, cy] = dataToCanvas(gdx, gdy, canvas);
+        ctx.fillStyle = lbl === 0 ? col0 : col1;
+        ctx.fillRect(cx - cellW/2, cy - cellH/2, cellW + 1, cellH + 1);
+      }
+    }
+
+    // Draw decision boundary line (where label changes between adjacent cells)
+    ctx.strokeStyle = LAB_ACCENTS.kernel;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    for (let row = 0; row < n - 1; row++) {
+      for (let col = 0; col < n - 1; col++) {
+        const cur = labels[row * n + col];
+        const right = labels[row * n + col + 1];
+        const down  = labels[(row+1) * n + col];
+        if (cur !== right || cur !== down) {
+          const gdx = x_min + (col + 0.5) / n * (x_max - x_min);
+          const gdy = y_max - (row + 0.5) / n * (y_max - y_min);
+          const [cx, cy] = dataToCanvas(gdx, gdy, canvas);
+          ctx.beginPath();
+          ctx.arc(cx, cy, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = LAB_ACCENTS.kernel;
+          ctx.fill();
+        }
+      }
+    }
+
+    // Draw support vectors (ringed circles)
+    kernelBoundary.support_vectors.forEach(sv => {
+      const [cx, cy] = dataToCanvas(sv[0], sv[1], canvas);
+      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  // Draw data points
+  kernelPoints.forEach(p => {
+    const [cx, cy] = dataToCanvas(p[0], p[1], canvas);
+    const col = CLASS_COLORS[p[2]];
+    ctx.beginPath();
+    if (p[2] === 0) {
+      ctx.arc(cx, cy, 7, 0, Math.PI*2);
+    } else {
+      ctx.rect(cx - 6, cy - 6, 12, 12);
+    }
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = PALETTE.bg; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+
+  // Legend
+  ctx.font = '12px DM Sans, sans-serif';
+  [['● Class A', CLASS_COLORS[0], 20], ['■ Class B', CLASS_COLORS[1], 110]].forEach(([txt, col, x]) => {
+    ctx.fillStyle = col; ctx.fillText(txt, x, H - 10);
+  });
+  if (kernelPoints.length === 0) {
+    ctx.fillStyle = PALETTE.muted; ctx.textAlign = 'center';
+    ctx.font = '14px DM Sans, sans-serif';
+    ctx.fillText('Click to place points, then hit Classify', W/2, H/2);
+    ctx.textAlign = 'left';
+  }
+}
+
+async function runKernelClassify() {
+  const cls0 = kernelPoints.filter(p=>p[2]===0).length;
+  const cls1 = kernelPoints.filter(p=>p[2]===1).length;
+  if (cls0 < 2 || cls1 < 2) {
+    alert('Add at least 2 points per class (use Class A and Class B buttons)');
+    return;
+  }
+  const icon = document.getElementById('kernel-run-icon');
+  const btn = document.getElementById('kernel-classify-btn');
+  icon.className = 'loading-spinner';
+  if (btn) btn.disabled = true;
+
+  try {
+    const kernel = document.getElementById('kernel-kernel').value;
+    const C = Math.pow(10, parseFloat(document.getElementById('kernel-c').value));
+    const res = await fetch('/api/kernel/classify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ points: kernelPoints, kernel, C })
+    });
+    if (!res.ok) { const e = await res.json(); alert(e.error || 'Error'); return; }
+    const data = await res.json();
+    kernelBoundary = data;
+    drawKernelCanvas();
+    document.getElementById('kernel-stats').style.display = 'block';
+    document.getElementById('kernel-acc').textContent = (data.accuracy * 100).toFixed(1) + '%';
+    document.getElementById('kernel-sv').textContent = data.support_vectors.length;
+    if (data.lift3d && kernel === 'rbf') {
+      document.getElementById('kernel-3d-container').style.display = 'block';
+      renderKernel3D(data.lift3d);
+    } else {
+      document.getElementById('kernel-3d-container').style.display = 'none';
+    }
+  } catch(e) {
+    console.error(e);
+  } finally {
+    icon.className = '';
+    icon.textContent = '▶';
+    if (btn) btn.disabled = false;
+  }
+}
+
+function clearKernelPoints() {
+  kernelPoints = [];
+  kernelBoundary = null;
+  drawKernelCanvas();
+  document.getElementById('kernel-stats').style.display = 'none';
+  document.getElementById('kernel-3d-container').style.display = 'none';
+}
+
+function renderKernel3D(lift3d) {
+  const { points, labels } = lift3d;
+  const traces = [0,1].map(cls => {
+    const pts = points.filter((_,i)=>labels[i]===cls);
+    return {
+      type: 'scatter3d', mode: 'markers',
+      x: pts.map(p=>p[0]), y: pts.map(p=>p[1]), z: pts.map(p=>p[2]),
+      marker: { color: CLASS_COLORS[cls], size: 4 }
+    };
+  });
+  Plotly.react('kernel-3d-plot', traces, {
+    ...baseLayout({ margin: {l:0,r:0,t:10,b:0} }),
+    scene: {
+      bgcolor: PALETTE.surface,
+      xaxis: { gridcolor: PALETTE.border, color: PALETTE.muted },
+      yaxis: { gridcolor: PALETTE.border, color: PALETTE.muted },
+      zaxis: { gridcolor: PALETTE.border, color: PALETTE.muted, title:{text:'φ(r²)',font:{color:PALETTE.muted}} }
+    }
+  }, plotConfig);
+}
+
+// Explain plots for kernel
+function renderKernelExplainPlot(step) {
+  const acc = LAB_ACCENTS.kernel;
+  if (step === 0) {
+    // Non-separable circles
+    const t = Array.from({length:40},(_,i)=>i/40*2*Math.PI);
+    const inner = t.map(a=>[Math.cos(a)*0.4+randn()*0.08, Math.sin(a)*0.4+randn()*0.08]);
+    const outer = t.map(a=>[Math.cos(a)*1.0+randn()*0.1, Math.sin(a)*1.0+randn()*0.1]);
+    Plotly.react('kernel-explain-plot0',[
+      { type:'scatter', mode:'markers', x:inner.map(p=>p[0]), y:inner.map(p=>p[1]),
+        marker:{color:CLASS_COLORS[0],size:8,symbol:'circle'} },
+      { type:'scatter', mode:'markers', x:outer.map(p=>p[0]), y:outer.map(p=>p[1]),
+        marker:{color:CLASS_COLORS[1],size:8,symbol:'square'} }
+    ], baseLayout(), plotConfig);
+  } else if (step === 1) {
+    // 3D lift demo
+    const t = Array.from({length:30},(_,i)=>i/30*2*Math.PI);
+    const inner = t.map(a=>[Math.cos(a)*0.4, Math.sin(a)*0.4]);
+    const outer = t.map(a=>[Math.cos(a)*1.0, Math.sin(a)*1.0]);
+    const lift = pts => pts.map(([x,y]) => [x, y, x*x+y*y]);
+    const li = lift(inner), lo = lift(outer);
+    Plotly.react('kernel-explain-plot1',[
+      { type:'scatter3d', mode:'markers',
+        x:li.map(p=>p[0]), y:li.map(p=>p[1]), z:li.map(p=>p[2]),
+        marker:{color:CLASS_COLORS[0],size:4} },
+      { type:'scatter3d', mode:'markers',
+        x:lo.map(p=>p[0]), y:lo.map(p=>p[1]), z:lo.map(p=>p[2]),
+        marker:{color:CLASS_COLORS[1],size:4} },
+    ], { ...baseLayout({margin:{l:0,r:0,t:10,b:0}}),
+         scene:{bgcolor:PALETTE.surface,
+                xaxis:{gridcolor:PALETTE.border,color:PALETTE.muted},
+                yaxis:{gridcolor:PALETTE.border,color:PALETTE.muted},
+                zaxis:{gridcolor:PALETTE.border,color:PALETTE.muted}} }, plotConfig);
+  } else if (step === 2) {
+    // Kernel similarity heatmap
+    const n = 20;
+    const pts = Array.from({length:n},(_,i)=>i/n*4-2);
+    const gamma = 0.5;
+    const Z = pts.map(xi => pts.map(xj => Math.exp(-gamma*(xi-xj)**2)));
+    Plotly.react('kernel-explain-plot2',[{
+      type:'heatmap', z:Z, colorscale:[[0,PALETTE.surface2],[1,acc]],
+      showscale:false
+    }], baseLayout(), plotConfig);
+  } else if (step === 3) {
+    // Decision boundary demo (pre-computed simple circles)
+    const t = Array.from({length:40},(_,i)=>i/40*2*Math.PI);
+    const inner = t.map(a=>[Math.cos(a)*0.4+randn()*0.08, Math.sin(a)*0.4+randn()*0.08]);
+    const outer = t.map(a=>[Math.cos(a)*1.0+randn()*0.1, Math.sin(a)*1.0+randn()*0.1]);
+    // Approximate RBF boundary as circle
+    const bd = Array.from({length:80},(_,i)=>i/80*2*Math.PI).map(a=>[Math.cos(a)*0.72, Math.sin(a)*0.72]);
+    Plotly.react('kernel-explain-plot3',[
+      { type:'scatter', mode:'markers', x:inner.map(p=>p[0]), y:inner.map(p=>p[1]),
+        marker:{color:CLASS_COLORS[0],size:7} },
+      { type:'scatter', mode:'markers', x:outer.map(p=>p[0]), y:outer.map(p=>p[1]),
+        marker:{color:CLASS_COLORS[1],size:7,symbol:'square'} },
+      { type:'scatter', mode:'lines', x:bd.map(p=>p[0]), y:bd.map(p=>p[1]),
+        line:{color:acc,width:2,dash:'dot'} }
+    ], baseLayout(), plotConfig);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PCA LAB
+// ═══════════════════════════════════════════════════════════════
+let pcaInitialized = false;
+let pcaData = null;
+let pcaResult = null;
+
+async function initPCALab() {
+  pcaInitialized = true;
+  buildDots('pca');
+  renderExplainPlot('pca', 0);
+  await loadPCADataset();
+}
+
+async function loadPCADataset() {
+  const dataset = document.getElementById('pca-dataset').value;
+  const res = await fetch('/api/pca/dataset', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ dataset })
+  });
+  const data = await res.json();
+  pcaData = data.points;
+  const nf = data.n_features || 5;
+  const slider = document.getElementById('pca-k');
+  slider.max = nf;
+  slider.value = Math.min(2, nf);
+  document.getElementById('pca-k-val').textContent = slider.value;
+  await runPCA();
+}
+
+async function runPCA() {
+  if (!pcaData) return;
+  const k = parseInt(document.getElementById('pca-k').value);
+  const res = await fetch('/api/pca/compute', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ points: pcaData, n_components: k })
+  });
+  pcaResult = await res.json();
+  renderPCASandbox();
+  renderVarianceBars();
+  renderScreePlot();
+}
+
+function renderPCASandbox() {
+  if (!pcaResult) return;
+  const { transformed_2d, transformed, reconstructed, explained_variance,
+          cumulative_variance, n_features, n_components_used, eigenvalues,
+          components, mean } = pcaResult;
+  const acc = LAB_ACCENTS.pca;
+  const red = CLASS_COLORS[1];
+
+  // ── Info bar ─────────────────────────────────────────────
+  const cumK = cumulative_variance[n_components_used - 1] || 0;
+  const pct  = (cumK * 100).toFixed(1);
+  const infoBar = document.getElementById('pca-info-bar');
+  const infoPct = document.getElementById('pca-info-pct');
+  if (infoBar) infoBar.style.width = pct + '%';
+  if (infoPct) infoPct.textContent = pct + '% variance retained';
+
+  // Shared values
+  const px = transformed_2d.map(p => p[0]);
+  const py = transformed_2d.map(p => p[1] || 0);
+  const ev0 = (explained_variance[0]*100).toFixed(0);
+  const ev1 = ((explained_variance[1]||0)*100).toFixed(0);
+
+  // ════════════════════════════════════════════════════════
+  // PLOT 1 — Raw data with PC direction arrows overlaid
+  //   For 2D data: show original xy + PC arrows from mean
+  //   For >2D data: show PC1 vs PC2 projection + arrows
+  // ════════════════════════════════════════════════════════
+  const titleEl = document.getElementById('pca-orig-title');
+
+  if (n_features === 2 && components && mean) {
+    // Show original 2D data with the two PC arrows drawn on it
+    if (titleEl) titleEl.textContent = 'Original data — arrows show principal component directions';
+    const traces1 = [{
+      type:'scatter', mode:'markers',
+      x: pcaData.map(p=>p[0]), y: pcaData.map(p=>p[1]),
+      marker:{color:acc, size:7, opacity:0.7},
+      name:'Data'
+    }];
+    // Draw PC arrows scaled by sqrt(eigenvalue)
+    const arrowColors = [acc, red];
+    const pcLabels = [`PC1 (${ev0}%)`, `PC2 (${ev1}%)`];
+    const arrows = [];
+    components.slice(0, 2).forEach((comp, ci) => {
+      const scale = Math.sqrt(eigenvalues[ci] || 1) * 1.5;
+      const x0 = mean[0], y0 = mean[1];
+      const x1 = mean[0] + comp[0] * scale;
+      const y1 = mean[1] + comp[1] * scale;
+      traces1.push({
+        type:'scatter', mode:'lines', name: pcLabels[ci],
+        x:[x0, x1], y:[y0, y1],
+        line:{color:arrowColors[ci], width:3}
+      });
+      arrows.push({
+        ax:x0, ay:y0, x:x1, y:y1, xref:'x', yref:'y', axref:'x', ayref:'y',
+        showarrow:true, arrowhead:2, arrowsize:1.2, arrowcolor:arrowColors[ci], arrowwidth:2.5
+      });
+    });
+    Plotly.react('pca-orig-plot', traces1, {
+      ...baseLayout({margin:{l:44,r:12,t:16,b:44}}),
+      showlegend:true,
+      legend:{x:1,xanchor:'right',y:1,bgcolor:'transparent',font:{color:PALETTE.muted2,size:10}},
+      annotations: arrows
+    }, plotConfig);
+  } else {
+    // >2D: show PC1 vs PC2 scatter, colour-coded by a third feature
+    if (titleEl) titleEl.textContent = `PC1 vs PC2 (from ${n_features}D) — each axis = a principal component`;
+    Plotly.react('pca-orig-plot', [{
+      type:'scatter', mode:'markers',
+      x: px, y: py,
+      marker:{color:px, colorscale:[[0,hexToRgba(acc,0.3)],[1,acc]], size:7, opacity:0.85, showscale:false},
+      hovertemplate:'PC1: %{x:.2f}<br>PC2: %{y:.2f}<extra></extra>'
+    }], {
+      ...baseLayout({margin:{l:44,r:12,t:16,b:44}}),
+      xaxis:{...baseLayout().xaxis, title:{text:`PC1 (${ev0}% variance)`,font:{color:acc,size:10}}},
+      yaxis:{...baseLayout().yaxis, title:{text:`PC2 (${ev1}% variance)`,font:{color:PALETTE.muted,size:10}}}
+    }, plotConfig);
+  }
+
+  // ════════════════════════════════════════════════════════
+  // PLOT 2 — Original vs Reconstructed
+  //   Shows what information is LOST by keeping only k PCs
+  // ════════════════════════════════════════════════════════
+  const reconTraces = [];
+  if (n_features === 2) {
+    reconTraces.push({
+      type:'scatter', mode:'markers', name:`Original (${n_features}D)`,
+      x:pcaData.map(p=>p[0]), y:pcaData.map(p=>p[1]),
+      marker:{color:acc, size:7, opacity:0.8}
+    });
+    reconTraces.push({
+      type:'scatter', mode:'markers', name:`Reconstructed (${n_components_used} PC)`,
+      x:reconstructed.map(p=>p[0]), y:reconstructed.map(p=>p[1]),
+      marker:{color:red, size:7, symbol:'x', opacity:0.8}
+    });
+    // Error lines (first 50 for clarity)
+    const lx=[], ly=[];
+    pcaData.slice(0,50).forEach((p,i)=>{
+      lx.push(p[0],reconstructed[i][0],null);
+      ly.push(p[1],reconstructed[i][1],null);
+    });
+    reconTraces.push({type:'scatter',mode:'lines',x:lx,y:ly,showlegend:false,
+      line:{color:PALETTE.muted,width:1,dash:'dot'},hoverinfo:'skip'});
+  } else {
+    // Multi-D: show Feature 1 vs Feature 2 of original vs reconstructed
+    reconTraces.push({
+      type:'scatter', mode:'markers', name:'Original',
+      x:pcaData.map(p=>p[0]), y:pcaData.map(p=>p[1]),
+      marker:{color:acc, size:7, opacity:0.8}
+    });
+    reconTraces.push({
+      type:'scatter', mode:'markers', name:`Reconstructed (${n_components_used}/${n_features} PCs)`,
+      x:reconstructed.map(p=>p[0]), y:reconstructed.map(p=>p[1]),
+      marker:{color:red, size:7, symbol:'x', opacity:0.75}
+    });
+    const lx=[], ly=[];
+    pcaData.slice(0,40).forEach((p,i)=>{
+      lx.push(p[0],reconstructed[i][0],null);
+      ly.push(p[1],reconstructed[i][1],null);
+    });
+    reconTraces.push({type:'scatter',mode:'lines',x:lx,y:ly,showlegend:false,
+      line:{color:PALETTE.muted,width:1,dash:'dot'},hoverinfo:'skip'});
+  }
+  const rtEl = document.getElementById('pca-recon-title');
+  if(rtEl) rtEl.textContent = n_features===2
+    ? `Original vs reconstructed using ${n_components_used} PC${n_components_used>1?'s':''} — lines show information lost`
+    : `Feature 1 vs Feature 2: original vs reconstructed (${n_components_used}/${n_features} PCs kept, ${pct}% variance retained)`;
+
+  Plotly.react('pca-proj-plot', reconTraces, {
+    ...baseLayout({margin:{l:44,r:12,t:16,b:44}}),
+    showlegend:true,
+    legend:{x:1,xanchor:'right',y:0,bgcolor:'transparent',font:{color:PALETTE.muted2,size:10}},
+    xaxis:{...baseLayout().xaxis, title:{text:'Feature 1',font:{color:PALETTE.muted,size:10}}},
+    yaxis:{...baseLayout().yaxis, title:{text:'Feature 2',font:{color:PALETTE.muted,size:10}}}
+  }, plotConfig);
+
+  // ════════════════════════════════════════════════════════
+  // PLOT 3 — Reconstruction error per point (bar/scatter)
+  //   Colour each point by how much it lost in reconstruction
+  // ════════════════════════════════════════════════════════
+  const errors = pcaData.map((orig, i) => {
+    const recon = reconstructed[i];
+    return Math.sqrt(orig.reduce((s,v,j) => s + (v-(recon[j]||0))**2, 0));
+  });
+  const sortedIdx = errors.map((_,i)=>i).sort((a,b)=>errors[b]-errors[a]);
+  const topN = Math.min(pcaData.length, 80);
+  const displayIdx = sortedIdx.slice(0, topN).sort((a,b)=>a-b);
+
+  Plotly.react('pca-recon-plot', [
+    {
+      type:'bar',
+      x: displayIdx.map(i => `pt${i+1}`),
+      y: displayIdx.map(i => +errors[i].toFixed(4)),
+      marker:{
+        color: displayIdx.map(i => errors[i]),
+        colorscale:[[0,acc],[0.5,'#f59e0b'],[1,red]],
+        showscale:true,
+        colorbar:{thickness:10,len:0.8,title:{text:'error',font:{color:PALETTE.muted,size:9}},
+                  tickfont:{color:PALETTE.muted,size:9}}
+      },
+      hovertemplate:'Point %{x}<br>Reconstruction error: %{y:.4f}<extra></extra>'
+    }
+  ], {
+    ...baseLayout({margin:{l:44,r:60,t:16,b:44}}),
+    xaxis:{...baseLayout().xaxis,
+      title:{text:'Data points (sorted by index)',font:{color:PALETTE.muted,size:10}},
+      showticklabels:false},
+    yaxis:{...baseLayout().yaxis,
+      title:{text:'Reconstruction error ‖x − x̂‖',font:{color:PALETTE.muted,size:10}}},
+    annotations:[{
+      x:0.01,y:0.99,xref:'paper',yref:'paper',
+      text:`<b>${pct}%</b> retained · <b>${(100-parseFloat(pct)).toFixed(1)}%</b> lost`,
+      showarrow:false,font:{color:acc,size:11},xanchor:'left',yanchor:'top',
+      bgcolor:hexToRgba(acc,0.12),bordercolor:acc,borderwidth:1,borderpad:4
+    }]
+  }, plotConfig);
+  const reconPanelTitle = document.getElementById('pca-recon-title');
+  if(reconPanelTitle) reconPanelTitle.textContent =
+    `Reconstruction error per point — drag the slider to see how keeping more PCs reduces error`;
+}
+
+function renderVarianceBars() {
+  if (!pcaResult) return;
+  const { explained_variance, n_components_used } = pcaResult;
+  const container = document.getElementById('pca-var-bars');
+  if (!container) return;
+  container.innerHTML = '';
+  explained_variance.slice(0, 6).forEach((v, i) => {
+    const kept = i < n_components_used;
+    container.innerHTML += `
+      <div class="var-bar-row">
+        <span class="var-bar-label" style="color:${kept?'var(--accent)':'var(--muted)'}">PC${i+1}</span>
+        <div class="var-bar-track">
+          <div class="var-bar-fill" style="width:${(v*100).toFixed(1)}%;background:${kept?'var(--accent)':PALETTE.border2}"></div>
+        </div>
+        <span class="var-bar-val">${(v*100).toFixed(1)}%</span>
+      </div>`;
+  });
+}
+
+function renderScreePlot() {
+  if (!pcaResult) return;
+  const { explained_variance, cumulative_variance, n_components_used } = pcaResult;
+  const acc = LAB_ACCENTS.pca;
+  const labels = explained_variance.map((_,i) => `PC${i+1}`);
+  Plotly.react('pca-scree-plot', [
+    { type:'bar', x:labels, y:explained_variance.map(v=>+(v*100).toFixed(1)),
+      marker:{color:labels.map((_,i)=>i<n_components_used?acc:PALETTE.border2)}, name:'Per PC' },
+    { type:'scatter', mode:'lines+markers', x:labels,
+      y:cumulative_variance.map(v=>+(v*100).toFixed(1)),
+      yaxis:'y2', line:{color:CLASS_COLORS[1],width:2},
+      marker:{color:CLASS_COLORS[1],size:5}, name:'Cumulative' }
+  ], {
+    ...baseLayout({ margin:{l:28,r:36,t:6,b:28} }),
+    yaxis2:{ overlaying:'y',side:'right',range:[0,105],
+              gridcolor:'transparent',color:PALETTE.muted,ticksuffix:'%',showgrid:false }
+  }, plotConfig);
+}
+
+function togglePCALayer(layer) { /* kept for compat */ }
+
+// PCA Explain plots
+function renderPCAExplainPlot(step) {
+  const acc = LAB_ACCENTS.pca;
+  const rng = seededRng(42);
+  const n = 60;
+  const t = Array.from({length:n},()=>rng()*4-2);
+  const pts = t.map(ti => [ti + rng()*0.3, ti*1.5 + rng()*0.3]);
+
+  if (step === 0) {
+    // Show two projections with different variances
+    const proj1 = pts.map(p => p[0]);
+    const proj2 = pts.map(p => (p[0]+p[1])/Math.sqrt(2));
+    const var1 = variance(proj1), var2 = variance(proj2);
+    Plotly.react('pca-explain-plot0',[
+      { type:'scatter', mode:'markers', x:pts.map(p=>p[0]), y:pts.map(p=>p[1]),
+        marker:{color:acc,size:7,opacity:0.7} },
+      { type:'scatter', mode:'lines', x:[-3,3], y:[-3,3],
+        line:{color:acc,width:2}, name:`PC direction (var=${var2.toFixed(2)})` },
+      { type:'scatter', mode:'lines', x:[-3,3], y:[0,0],
+        line:{color:CLASS_COLORS[1],width:2,dash:'dash'}, name:`Horizontal (var=${var1.toFixed(2)})` }
+    ], baseLayout(), plotConfig);
+  } else if (step === 1) {
+    const mx = mean(pts.map(p=>p[0])), my = mean(pts.map(p=>p[1]));
+    const scale = 1.8;
+    const v1 = [1/Math.sqrt(2), 1/Math.sqrt(2)];
+    const v2 = [-1/Math.sqrt(2), 1/Math.sqrt(2)];
+    Plotly.react('pca-explain-plot1',[
+      { type:'scatter', mode:'markers', x:pts.map(p=>p[0]), y:pts.map(p=>p[1]),
+        marker:{color:acc,size:7,opacity:0.6} },
+      { type:'scatter', mode:'lines+markers',
+        x:[mx, mx+v1[0]*scale*2], y:[my, my+v1[1]*scale*2],
+        line:{color:acc,width:3}, marker:{size:[0,10],color:acc} },
+      { type:'scatter', mode:'lines+markers',
+        x:[mx, mx+v2[0]*scale*0.5], y:[my, my+v2[1]*scale*0.5],
+        line:{color:CLASS_COLORS[1],width:3}, marker:{size:[0,10],color:CLASS_COLORS[1]} }
+    ], { ...baseLayout(),
+         annotations:[
+           {x:mx+v1[0]*scale*2+0.1, y:my+v1[1]*scale*2, text:'PC1', showarrow:false, font:{color:acc,size:13}},
+           {x:mx+v2[0]*scale*0.6, y:my+v2[1]*scale*0.6+0.15, text:'PC2', showarrow:false, font:{color:CLASS_COLORS[1],size:13}}
+         ] }, plotConfig);
+  } else if (step === 2) {
+    // Original vs reconstructed
+    const v1 = [1/Math.sqrt(2), 1/Math.sqrt(2)];
+    const recon = pts.map(p => {
+      const proj = (p[0]-mean(pts.map(q=>q[0])))*v1[0] + (p[1]-mean(pts.map(q=>q[1])))*v1[1];
+      return [mean(pts.map(q=>q[0]))+proj*v1[0], mean(pts.map(q=>q[1]))+proj*v1[1]];
+    });
+    const lineX = [], lineY = [];
+    pts.slice(0,15).forEach((p,i) => { lineX.push(p[0],recon[i][0],null); lineY.push(p[1],recon[i][1],null); });
+    Plotly.react('pca-explain-plot2',[
+      { type:'scatter', mode:'markers', x:pts.map(p=>p[0]), y:pts.map(p=>p[1]),
+        marker:{color:acc,size:7,opacity:0.7} },
+      { type:'scatter', mode:'markers', x:recon.map(p=>p[0]), y:recon.map(p=>p[1]),
+        marker:{color:CLASS_COLORS[1],size:7,symbol:'x',opacity:0.8} },
+      { type:'scatter', mode:'lines', x:lineX, y:lineY,
+        line:{color:PALETTE.muted,width:1,dash:'dot'} }
+    ], baseLayout(), plotConfig);
+  } else if (step === 3) {
+    // Scree plot
+    Plotly.react('pca-explain-plot3',[
+      { type:'bar', x:['PC1','PC2'], y:[0.82, 0.18],
+        marker:{color:[acc,PALETTE.border2]},
+        name:'Explained Variance' },
+      { type:'scatter', mode:'lines+markers', x:['PC1','PC2'], y:[0.82,1.0],
+        yaxis:'y2', line:{color:CLASS_COLORS[1],width:2},
+        marker:{color:CLASS_COLORS[1],size:8} }
+    ], { ...baseLayout(),
+         yaxis2:{overlaying:'y',side:'right',range:[0,1.1],
+                  gridcolor:'transparent',color:PALETTE.muted,
+                  tickformat:'.0%'} }, plotConfig);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SPECTRAL CLUSTERING LAB
+// ═══════════════════════════════════════════════════════════════
+let spectralInitialized = false;
+let spectralData = null;
+
+async function initSpectralLab() {
+  spectralInitialized = true;
+  buildDots('spectral');
+  renderExplainPlot('spectral', 0);
+  await loadSpectralDataset();
+}
+
+async function loadSpectralDataset() {
+  const dataset = document.getElementById('spectral-dataset').value;
+  const res = await fetch('/api/spectral/dataset', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ dataset, n: 100 })
+  });
+  spectralData = (await res.json()).points;
+  // Auto-set good gamma and k per dataset
+  const goodGammas = { circles: 20.0, moons: 20.0, spiral: 100.0, blobs: 0.5 };
+  const goodK      = { circles: 2,   moons: 2,   spiral: 2,   blobs: 3   };
+  const g = goodGammas[dataset] || 1.0;
+  const k = goodK[dataset] || 2;
+  const gSlider = document.getElementById('spectral-g');
+  const kSlider = document.getElementById('spectral-k');
+  gSlider.value = Math.log10(g).toFixed(1);
+  document.getElementById('spectral-g-val').textContent = g.toFixed(1);
+  kSlider.value = k;
+  document.getElementById('spectral-k-val').textContent = k;
+  await runSpectralCluster();
+}
+
+async function runSpectralCluster() {
+  if (!spectralData) return;
+  const icon = document.getElementById('spectral-run-icon');
+  const btn  = document.getElementById('spectral-cluster-btn');
+  icon.className = 'loading-spinner';
+  if (btn) btn.disabled = true;
+  try {
+    const k     = parseInt(document.getElementById('spectral-k').value);
+    const gamma = Math.pow(10, parseFloat(document.getElementById('spectral-g').value));
+    const res   = await fetch('/api/spectral/cluster', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ points: spectralData, n_clusters: k, gamma })
+    });
+    const data = await res.json();
+    renderSpectralPlots(data, k);
+  } catch(e) { console.error(e); }
+  finally {
+    icon.className = ''; icon.textContent = '▶';
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderSpectralPlots(data, k) {
+  const acc = LAB_ACCENTS.spectral;
+  const sLabels = data.spectral_labels;
+  const kLabels = data.kmeans_labels;
+
+  // Shared axis range so both plots are comparable
+  const xs = spectralData.map(p=>p[0]), ys = spectralData.map(p=>p[1]);
+  const pad = 0.3;
+  const xrange = [Math.min(...xs)-pad, Math.max(...xs)+pad];
+  const yrange = [Math.min(...ys)-pad, Math.max(...ys)+pad];
+  const sharedLayout = {
+    ...baseLayout({ margin:{l:44,r:16,t:16,b:44} }),
+    xaxis: { ...baseLayout().xaxis, range: xrange },
+    yaxis: { ...baseLayout().yaxis, range: yrange }
+  };
+
+  // Spectral plot
+  Plotly.react('spectral-plot-spectral',
+    Array.from({length:k}, (_,ci) => {
+      const pts = spectralData.filter((_,i) => sLabels[i] === ci);
+      return { type:'scatter', mode:'markers', name:`Cluster ${ci+1}`,
+        x:pts.map(p=>p[0]), y:pts.map(p=>p[1]),
+        marker:{color:CLUSTER_COLORS[ci], size:8, opacity:0.9,
+                line:{color:PALETTE.bg, width:1}} };
+    }), sharedLayout, plotConfig);
+
+  // K-means plot — same scale
+  Plotly.react('spectral-plot-kmeans',
+    Array.from({length:k}, (_,ci) => {
+      const pts = spectralData.filter((_,i) => kLabels[i] === ci);
+      return { type:'scatter', mode:'markers', name:`Cluster ${ci+1}`,
+        x:pts.map(p=>p[0]), y:pts.map(p=>p[1]),
+        marker:{color:CLUSTER_COLORS[ci], size:8, opacity:0.9, symbol:'square',
+                line:{color:PALETTE.bg, width:1}} };
+    }), sharedLayout, plotConfig);
+
+  // Eigenvalue spectrum — full height with eigengap marked
+  const eigs = data.eigenvalues;
+  const gap  = eigs.reduce((best,v,i) =>
+    i>0 && (eigs[i]-eigs[i-1]) > best.diff ? {i, diff:eigs[i]-eigs[i-1]} : best,
+    {i:0, diff:-1});
+  const eigColors = eigs.map((_,i) => i < k ? acc : '#4b5563');  // visible grey for non-selected
+  Plotly.react('spectral-eigenval-mini', [
+    { type:'bar', x:eigs.map((_,i)=>`λ${i+1}`), y:eigs,
+      marker:{ color:eigColors, line:{color:'transparent',width:0} },
+      name:'Eigenvalue',
+      hovertemplate:'λ%{x}: %{y:.4f}<extra></extra>' }
+  ], {
+    ...baseLayout({margin:{l:38,r:12,t:20,b:36}}),
+    xaxis:{ ...baseLayout().xaxis, color:PALETTE.muted2, tickfont:{color:PALETTE.muted2,size:10} },
+    yaxis:{ ...baseLayout().yaxis, color:PALETTE.muted2, tickfont:{color:PALETTE.muted2,size:10},
+            title:{text:'eigenvalue',font:{color:PALETTE.muted,size:9}} },
+    annotations: gap.i > 0 ? [{
+      x: gap.i + 0.5, y: (eigs[gap.i-1] + eigs[gap.i]) / 2,
+      xref:'x', yref:'y',
+      text:`eigengap<br>→ k=${k}`,
+      showarrow:true, arrowhead:2, arrowcolor:acc, arrowwidth:1.5,
+      font:{color:acc, size:9}, ax:36, ay:0,
+      bgcolor:hexToRgba(acc,0.12), bordercolor:acc, borderpad:3
+    }] : []
+  }, plotConfig);
+
+  // Spectral embedding — this is the key visualization showing WHY it works
+  const emb = data.embedding;
+  const embLabels = data.embedding_labels || sLabels.slice(0, emb.length);
+  Plotly.react('spectral-embed-mini',
+    Array.from({length:k}, (_,ci) => ({
+      type:'scatter', mode:'markers', name:`Cluster ${ci+1}`,
+      x: emb.filter((_,i) => embLabels[i] === ci).map(p => p[0]),
+      y: emb.filter((_,i) => embLabels[i] === ci).map(p => p[1] || 0),
+      marker:{color:CLUSTER_COLORS[ci], size:6, opacity:0.85}
+    })),
+    { ...baseLayout({margin:{l:30,r:8,t:8,b:28}}),
+      xaxis:{...baseLayout().xaxis, title:{text:'Eigenvector 1',font:{color:PALETTE.muted,size:9}}},
+      yaxis:{...baseLayout().yaxis, title:{text:'Eigenvector 2',font:{color:PALETTE.muted,size:9}}}
+    }, plotConfig);
+
+  // Affinity heatmap
+  Plotly.react('spectral-affinity-plot',[{
+    type:'heatmap', z:data.affinity_matrix,
+    colorscale:[[0,'#1a1e28'],[0.15,PALETTE.border2],[0.5,LAB_ACCENTS.spectral+'99'],[1,acc]],
+    showscale:true,
+    colorbar:{thickness:8, len:0.8, tickfont:{color:PALETTE.muted2,size:9}}
+  }], { ...baseLayout({margin:{l:20,r:50,t:8,b:20}}) }, plotConfig);
+}
+
+// Spectral explain plots
+function renderSpectralExplainPlot(step) {
+  const acc = LAB_ACCENTS.spectral;
+  const t = Array.from({length:40},(_,i)=>i/40*2*Math.PI);
+  const inner = t.map(a=>[Math.cos(a)*0.4+randn()*0.07, Math.sin(a)*0.4+randn()*0.07]);
+  const outer = t.map(a=>[Math.cos(a)*1.0+randn()*0.1, Math.sin(a)*1.0+randn()*0.1]);
+
+  if (step === 0) {
+    // K-means fails — wrong colours
+    const all = [...inner, ...outer];
+    const kmLabels = all.map(p => p[0] > 0 ? 0 : 1); // vertical split
+    Plotly.react('spectral-explain-plot0',[
+      { type:'scatter', mode:'markers',
+        x:all.filter((_,i)=>kmLabels[i]===0).map(p=>p[0]),
+        y:all.filter((_,i)=>kmLabels[i]===0).map(p=>p[1]),
+        marker:{color:CLUSTER_COLORS[0],size:7} },
+      { type:'scatter', mode:'markers',
+        x:all.filter((_,i)=>kmLabels[i]===1).map(p=>p[0]),
+        y:all.filter((_,i)=>kmLabels[i]===1).map(p=>p[1]),
+        marker:{color:CLUSTER_COLORS[1],size:7,symbol:'square'} },
+      { type:'scatter', mode:'lines', x:[0,0], y:[-1.5,1.5],
+        line:{color:'white',width:2,dash:'dash'}, name:'K-means boundary' }
+    ], baseLayout(), plotConfig);
+  } else if (step === 1) {
+    // Affinity matrix heatmap
+    const pts = [...inner.slice(0,10), ...outer.slice(0,10)];
+    const gamma = 2;
+    const Z = pts.map(pi => pts.map(pj => {
+      const d2 = (pi[0]-pj[0])**2 + (pi[1]-pj[1])**2;
+      return Math.exp(-gamma*d2);
+    }));
+    Plotly.react('spectral-explain-plot1',[{
+      type:'heatmap', z:Z,
+      colorscale:[[0,PALETTE.surface2],[1,acc]],
+      showscale:false
+    }], baseLayout(), plotConfig);
+  } else if (step === 2) {
+    // Eigenvalue spectrum with gap
+    const eigs = [0.001, 0.002, 0.45, 0.68, 0.92, 1.1, 1.3];
+    Plotly.react('spectral-explain-plot2',[{
+      type:'bar', x:eigs.map((_,i)=>i+1), y:eigs,
+      marker:{color:eigs.map((_,i)=>i<2?acc:PALETTE.border2)}
+    },{
+      type:'scatter', mode:'lines', x:[2.5,2.5], y:[0,1.5],
+      line:{color:'white',width:2,dash:'dot'}
+    }], { ...baseLayout(),
+          annotations:[{x:2.5,y:1.5,text:'eigengap → 2 clusters',
+                        showarrow:false,font:{color:'white',size:11},yanchor:'bottom'}] },
+         plotConfig);
+  } else if (step === 3) {
+    // Spectral embedding — rings become separable
+    const embInner = inner.map(p => ({ x: Math.cos(Math.atan2(p[1],p[0])), y: 0.1+randn()*0.05 }));
+    const embOuter = outer.map(p => ({ x: Math.cos(Math.atan2(p[1],p[0])), y: 0.9+randn()*0.05 }));
+    Plotly.react('spectral-explain-plot3',[
+      { type:'scatter', mode:'markers', x:embInner.map(p=>p.x), y:embInner.map(p=>p.y),
+        marker:{color:CLUSTER_COLORS[0],size:7} },
+      { type:'scatter', mode:'markers', x:embOuter.map(p=>p.x), y:embOuter.map(p=>p.y),
+        marker:{color:CLUSTER_COLORS[1],size:7,symbol:'square'} }
+    ], { ...baseLayout(), yaxis:{...baseLayout().yaxis, range:[-0.5,1.5],
+         title:{text:'spectral embedding dim 2',font:{color:PALETTE.muted,size:10}}} },
+       plotConfig);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GNN LAB
+// ═══════════════════════════════════════════════════════════════
+let gnnInitialized = false;
+let gnnNodes = [], gnnEdges = [];
+let gnnTool = 'node';
+let gnnEdgeStart = null;
+let gnnHighlightNode = null;
+let gnnLayerStates = null;
+let gnnCurrentLayer = 0;
+let gnnEmbedColors = [];  // per-node colour strings after forward pass
+
+function initGNNLab() {
+  gnnInitialized = true;
+  buildDots('gnn');
+  renderExplainPlot('gnn', 0);
+  const canvas = document.getElementById('gnn-canvas');
+  canvas.addEventListener('click', onGNNCanvasClick);
+  canvas.addEventListener('mousemove', onGNNCanvasHover);
+  loadGNNPreset();
+}
+
+function setGNNTool(tool) {
+  gnnTool = tool;
+  gnnEdgeStart = null;
+  ['node','edge','delete'].forEach(t =>
+    document.getElementById(`gnn-tool-${t}`).classList.toggle('active', t === tool));
+  document.getElementById('gnn-canvas').style.cursor =
+    tool === 'node' ? 'crosshair' : tool === 'delete' ? 'not-allowed' : 'pointer';
+}
+
+async function loadGNNPreset() {
+  const preset = document.getElementById('gnn-preset').value;
+  const res = await fetch('/api/gnn/preset', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ preset })
+  });
+  const data = await res.json();
+  gnnNodes = data.nodes;
+  gnnEdges = data.edges;
+  gnnLayerStates = null;
+  gnnCurrentLayer = 0;
+  gnnEmbedColors = [];
+  document.getElementById('gnn-layer-nav').style.display = 'none';
+  drawGNNCanvas();
+}
+
+function getNodeAt(x, y, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = (x - rect.left) * scaleX;
+  const cy = (y - rect.top) * scaleY;
+  return gnnNodes.find(n => Math.hypot(n.x - cx, n.y - cy) < 22);
+}
+
+function onGNNCanvasClick(e) {
+  const canvas = document.getElementById('gnn-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+  const hit = gnnNodes.find(n => Math.hypot(n.x - x, n.y - y) < 22);
+
+  if (gnnTool === 'node' && !hit) {
+    const id = String.fromCharCode(65 + gnnNodes.length % 26) + (gnnNodes.length > 25 ? Math.floor(gnnNodes.length/26) : '');
+    gnnNodes.push({ id, features: [Math.random(), Math.random()], label: 0, x, y });
+    drawGNNCanvas();
+  } else if (gnnTool === 'edge') {
+    if (!hit) return;
+    if (!gnnEdgeStart) {
+      gnnEdgeStart = hit;
+      drawGNNCanvas(hit);
+    } else if (hit.id !== gnnEdgeStart.id) {
+      const exists = gnnEdges.find(e =>
+        (e.source===gnnEdgeStart.id && e.target===hit.id) ||
+        (e.source===hit.id && e.target===gnnEdgeStart.id));
+      if (!exists) gnnEdges.push({ source: gnnEdgeStart.id, target: hit.id });
+      gnnEdgeStart = null;
+      drawGNNCanvas();
+    }
+  } else if (gnnTool === 'delete') {
+    if (hit) {
+      gnnNodes = gnnNodes.filter(n => n.id !== hit.id);
+      gnnEdges = gnnEdges.filter(e => e.source !== hit.id && e.target !== hit.id);
+    } else {
+      // delete nearest edge
+      const nearest = gnnEdges.reduce((best, e) => {
+        const src = gnnNodes.find(n=>n.id===e.source);
+        const tgt = gnnNodes.find(n=>n.id===e.target);
+        if (!src||!tgt) return best;
+        const d = pointToSegDist(x, y, src.x, src.y, tgt.x, tgt.y);
+        return d < best.d ? {e, d} : best;
+      }, {e:null, d:Infinity});
+      if (nearest.d < 15) gnnEdges = gnnEdges.filter(e => e !== nearest.e);
+    }
+    drawGNNCanvas();
+  }
+}
+
+function onGNNCanvasHover(e) {
+  const hit = getNodeAt(e.clientX, e.clientY, document.getElementById('gnn-canvas'));
+  if (hit !== gnnHighlightNode) {
+    gnnHighlightNode = hit;
+    drawGNNCanvas(gnnEdgeStart);
+  }
+}
+
+function pointToSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2-x1, dy = y2-y1;
+  if (dx===0 && dy===0) return Math.hypot(px-x1, py-y1);
+  const t = Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy)));
+  return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
+}
+
+function drawGNNCanvas(selectedNode = null, highlightNodes = []) {
+  const canvas = document.getElementById('gnn-canvas');
+  const ctx = canvas.getContext('2d');
+  const acc = LAB_ACCENTS.gnn;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = PALETTE.surface;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw edges
+  gnnEdges.forEach(e => {
+    const src = gnnNodes.find(n=>n.id===e.source);
+    const tgt = gnnNodes.find(n=>n.id===e.target);
+    if (!src || !tgt) return;
+    const hl = highlightNodes.includes(src.id) || highlightNodes.includes(tgt.id);
+    ctx.beginPath();
+    ctx.moveTo(src.x, src.y);
+    ctx.lineTo(tgt.x, tgt.y);
+    ctx.strokeStyle = hl ? acc : PALETTE.border2;
+    ctx.lineWidth = hl ? 3 : 1.5;
+    ctx.stroke();
+    // Arrow tip
+    if (hl) {
+      const angle = Math.atan2(tgt.y-src.y, tgt.x-src.x);
+      const len = Math.hypot(tgt.x-src.x, tgt.y-src.y);
+      const ex = src.x + Math.cos(angle)*(len-24);
+      const ey = src.y + Math.sin(angle)*(len-24);
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex-10*Math.cos(angle-0.4), ey-10*Math.sin(angle-0.4));
+      ctx.lineTo(ex-10*Math.cos(angle+0.4), ey-10*Math.sin(angle+0.4));
+      ctx.closePath();
+      ctx.fillStyle = acc; ctx.fill();
+    }
+  });
+
+  // Draw nodes
+  gnnNodes.forEach((n, ni) => {
+    const isSelected  = selectedNode && selectedNode.id === n.id;
+    const isHighlighted = highlightNodes.includes(n.id);
+    const isHovered   = gnnHighlightNode && gnnHighlightNode.id === n.id;
+    const r = 22;
+
+    // Embedding colour (if we have one)
+    const embedCol = gnnEmbedColors[ni] || PALETTE.surface2;
+    const nodeCol  = isHighlighted ? acc : (gnnEmbedColors.length > 0 ? embedCol : PALETTE.surface2);
+
+    // Glow ring
+    if (isHighlighted || isSelected || isHovered) {
+      ctx.beginPath(); ctx.arc(n.x, n.y, r+9, 0, Math.PI*2);
+      ctx.fillStyle = hexToRgba(acc, 0.22); ctx.fill();
+    }
+
+    // Fill with embedding colour
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2);
+    ctx.fillStyle = nodeCol; ctx.fill();
+    ctx.strokeStyle = isHighlighted ? '#fff' : isHovered ? acc : PALETTE.border2;
+    ctx.lineWidth = isHighlighted||isHovered ? 2.5 : 1.5;
+    ctx.stroke();
+
+    // Feature mini-bars (only when no embeddings shown)
+    if (gnnEmbedColors.length === 0) {
+      const fw=14, fh=3;
+      n.features.slice(0,2).forEach((f,fi) => {
+        ctx.fillStyle = PALETTE.border;
+        ctx.fillRect(n.x-fw/2, n.y-8+fi*6, fw, fh);
+        ctx.fillStyle = acc;
+        ctx.fillRect(n.x-fw/2, n.y-8+fi*6, fw*Math.max(0,Math.min(1,f)), fh);
+      });
+    }
+
+    // Node ID label — dark text on light node colours, white on dark
+    const nodeBrightness = gnnEmbedColors.length > 0 ?
+      (() => { const m = gnnEmbedColors[ni].match(/\d+/g); return m ? (+m[0]*299 + +m[1]*587 + +m[2]*114)/1000 : 80; })() : 80;
+    ctx.fillStyle = nodeBrightness > 140 ? '#0d0f14' : '#ffffff';
+    ctx.font = 'bold 12px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.id, n.x, n.y);
+
+    // Show embedding value below (when available)
+    if (gnnEmbedColors.length > 0 && gnnLayerStates) {
+      const emb = gnnLayerStates[gnnCurrentLayer].embeddings[ni];
+      if (emb) {
+        const val = (emb.reduce((a,b)=>a+b,0)/emb.length).toFixed(2);
+        ctx.fillStyle = PALETTE.muted2;
+        ctx.font = '9px DM Mono, monospace';
+        ctx.fillText(`μ=${val}`, n.x, n.y + r + 10);
+      }
+    }
+  });
+
+  // Legend
+  if (gnnEmbedColors.length > 0) {
+    ctx.font = '10px DM Sans, sans-serif';
+    ctx.fillStyle = PALETTE.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`Layer ${gnnCurrentLayer} embeddings — colour = mean activation`, 12, canvas.height - 8);
+  } else if (gnnNodes.length === 0) {
+    ctx.fillStyle = PALETTE.muted;
+    ctx.font = '14px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Click to add nodes, then use "Add Edge" to connect them', canvas.width/2, canvas.height/2);
+    ctx.textAlign = 'left';
+  }
+}
+
+async function runGNNForward() {
+  if (gnnNodes.length === 0) return;
+  const icon = document.getElementById('gnn-run-icon');
+  const btn  = document.getElementById('gnn-forward-btn');
+  icon.className = 'loading-spinner';
+  if (btn) btn.disabled = true;
+  try {
+    const layers = parseInt(document.getElementById('gnn-layers').value);
+    const res = await fetch('/api/gnn/forward', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ nodes: gnnNodes, edges: gnnEdges, n_layers: layers })
+    });
+    const data = await res.json();
+    gnnLayerStates = data.layer_states;
+    gnnCurrentLayer = data.layer_states.length - 1;
+    renderGNNTrace(data.message_trace);
+    renderGNNLayerNav(data.layer_states);
+    viewGNNLayer(gnnCurrentLayer);
+  } catch(e) { console.error(e); }
+  finally {
+    icon.className = ''; icon.textContent = '▶';
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Scalar colour for a node based on mean of its embedding vector
+function embeddingToColour(emb, globalMin, globalMax) {
+  const v = emb.reduce((a,b)=>a+b,0) / emb.length;
+  const t = globalMax > globalMin ? Math.max(0, Math.min(1, (v - globalMin) / (globalMax - globalMin))) : 0.5;
+  // Vivid blue → teal → amber — all high-contrast on dark background
+  let r, g, b;
+  if (t < 0.5) {
+    const s = t * 2;
+    r = Math.round(96  * (1-s) + 52  * s);
+    g = Math.round(165 * (1-s) + 211 * s);
+    b = Math.round(250 * (1-s) + 153 * s);
+  } else {
+    const s = (t - 0.5) * 2;
+    r = Math.round(52  * (1-s) + 245 * s);
+    g = Math.round(211 * (1-s) + 158 * s);
+    b = Math.round(153 * (1-s) + 11  * s);
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+function renderGNNLayerNav(layerStates) {
+  const nav = document.getElementById('gnn-layer-nav');
+  const btns = document.getElementById('gnn-layer-btns');
+  nav.style.display = 'block';
+  btns.innerHTML = layerStates.map((s,i) => `
+    <button class="tool-btn${i===gnnCurrentLayer?' active':''}"
+      onclick="viewGNNLayer(${i})" id="gnn-layer-btn-${i}">
+      Layer ${i}${i===0?' (input)':i===layerStates.length-1?' (final)':''}
+    </button>`).join('');
+}
+
+function viewGNNLayer(layerIdx) {
+  if (!gnnLayerStates || layerIdx >= gnnLayerStates.length) return;
+  gnnCurrentLayer = layerIdx;
+  // Update button highlight
+  document.querySelectorAll('[id^="gnn-layer-btn-"]').forEach((b,i) =>
+    b.classList.toggle('active', i === layerIdx));
+  const desc = document.getElementById('gnn-layer-desc');
+  if (desc) desc.textContent = layerIdx === 0
+    ? 'Layer 0: raw input features — no neighbourhood info yet'
+    : `Layer ${layerIdx}: each node has aggregated ${layerIdx}-hop neighbourhood info`;
+  // Draw canvas with embedding colours
+  const embeddings = gnnLayerStates[layerIdx].embeddings;
+  const allVals = embeddings.flat();
+  const gMin = Math.min(...allVals), gMax = Math.max(...allVals);
+  gnnEmbedColors = embeddings.map(e => embeddingToColour(e, gMin, gMax));
+  drawGNNCanvas();
+  // Render plots
+  renderGNNEmbedding(embeddings);
+  renderGNNHeatmap(embeddings, layerIdx);
+}
+
+function renderGNNTrace(trace) {
+  const container = document.getElementById('gnn-msg-trace');
+  container.innerHTML = trace.map(t => `
+    <div class="msg-row">
+      <span class="msg-node-id">${t.node}</span>
+      <span class="msg-arrow">←</span>
+      <span class="msg-neighbours" style="font-size:0.78rem">
+        ${t.neighbours.length > 0
+          ? t.neighbours.join(', ') + ` <span style="color:var(--muted)">(${t.n_neighbours} neighbour${t.n_neighbours!==1?'s':''})</span>`
+          : '<span style="color:var(--muted)">isolated node</span>'}
+      </span>
+    </div>`).join('');
+}
+
+async function animateMessagePassing() {
+  if (gnnNodes.length === 0) return;
+  // Run forward to get trace if not already done
+  const layers = parseInt(document.getElementById('gnn-layers').value);
+  const res = await fetch('/api/gnn/forward', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nodes: gnnNodes, edges: gnnEdges, n_layers: layers })
+  });
+  const data = await res.json();
+  gnnLayerStates = data.layer_states;
+  renderGNNTrace(data.message_trace);
+  renderGNNLayerNav(data.layer_states);
+  // Animate layer by layer
+  let layerIdx = 0;
+  function animStep() {
+    if (layerIdx > data.layer_states.length - 1) return;
+    viewGNNLayer(layerIdx);
+    layerIdx++;
+    if (layerIdx < data.layer_states.length) setTimeout(animStep, 900);
+  }
+  animStep();
+  // Then animate message trace
+  setTimeout(() => {
+    const rows = document.querySelectorAll('.msg-row');
+    let i = 0;
+    function traceStep() {
+      rows.forEach((r,ri)=>r.classList.toggle('highlight', ri===i));
+      const t = data.message_trace[i];
+      const acc = LAB_ACCENTS.gnn;
+      drawGNNCanvas(null, [t.node, ...t.neighbours]);
+      i++;
+      if (i < rows.length) setTimeout(traceStep, 650);
+      else setTimeout(() => { drawGNNCanvas(); rows.forEach(r=>r.classList.remove('highlight')); }, 650);
+    }
+    if (rows.length > 0) traceStep();
+  }, data.layer_states.length * 900 + 400);
+}
+
+function renderGNNEmbedding(embeddings) {
+  const acc = LAB_ACCENTS.gnn;
+  const n = embeddings.length;
+  if (n === 0) return;
+  // PCA of embeddings to 2D
+  const d = embeddings[0].length;
+  let x, y;
+  if (d >= 2) {
+    // Simple 2D projection: take first two dims after mean-centering
+    const mean0 = embeddings.reduce((s,e)=>s+e[0],0)/n;
+    const mean1 = embeddings.reduce((s,e)=>s+(e[1]||0),0)/n;
+    x = embeddings.map(e => e[0]-mean0);
+    y = embeddings.map(e => (e[1]||0)-mean1);
+  } else {
+    x = embeddings.map(e=>e[0]||0);
+    y = embeddings.map(_=>0);
+  }
+  const allVals = embeddings.flat();
+  const gMin = Math.min(...allVals), gMax = Math.max(...allVals);
+  const nodeColours = embeddings.map(e => {
+    const v = e.reduce((a,b)=>a+b,0)/e.length;
+    return (gMax>gMin) ? (v-gMin)/(gMax-gMin) : 0.5;
+  });
+
+  Plotly.react('gnn-embedding-plot', [{
+    type:'scatter', mode:'markers+text',
+    x, y,
+    text: gnnNodes.map(nd=>nd.id),
+    textposition:'top center',
+    textfont:{ color:'#e8eaf0', size:12, family:'DM Mono, monospace' },
+    marker:{
+      color: nodeColours,
+      colorscale: [[0,'#60a5fa'],[0.5,'#34d399'],[1,'#f59e0b']],
+      size:16, showscale:true,
+      colorbar:{thickness:8,len:0.7,title:{text:'embed\nmean',font:{color:PALETTE.muted2,size:8}},
+                tickfont:{color:PALETTE.muted2,size:8}},
+      line:{color:PALETTE.bg,width:2}
+    },
+    hovertemplate: gnnNodes.map((nd,i)=>
+      `<b>${nd.id}</b><br>` + embeddings[i].map((v,j)=>`h${j}=${v.toFixed(3)}`).join('<br>') + '<extra></extra>')
+  }], {
+    ...baseLayout({ margin:{l:36,r:60,t:16,b:36} }),
+    xaxis:{...baseLayout().xaxis, title:{text:'Embedding dim 1 (centred)',font:{color:PALETTE.muted,size:9}}},
+    yaxis:{...baseLayout().yaxis, title:{text:'Embedding dim 2',font:{color:PALETTE.muted,size:9}}}
+  }, plotConfig);
+}
+
+function renderGNNHeatmap(embeddings, layerIdx) {
+  const acc = LAB_ACCENTS.gnn;
+  if (!embeddings || embeddings.length === 0) return;
+  const nodeIds = gnnNodes.map(n=>n.id);
+  const dimLabels = embeddings[0].map((_,i)=>`h${i}`);
+  Plotly.react('gnn-heatmap-plot', [{
+    type:'heatmap',
+    z: embeddings,
+    x: dimLabels,
+    y: nodeIds,
+    colorscale:[[0,'#60a5fa'],[0.5,'#34d399'],[1,'#f59e0b']],
+    showscale:true,
+    colorbar:{thickness:8,len:0.8,tickfont:{color:PALETTE.muted,size:8}},
+    hovertemplate:'Node %{y}<br>Dim %{x}<br>Value: %{z:.3f}<extra></extra>'
+  }], {
+    ...baseLayout({ margin:{l:36,r:52,t:16,b:36} }),
+    annotations:[{
+      x:0.5,y:1.08,xref:'paper',yref:'paper',
+      text:`Layer ${layerIdx} embeddings`,
+      showarrow:false,font:{color:PALETTE.muted2,size:10}
+    }]
+  }, plotConfig);
+}
+
+function clearGNNGraph() {
+  gnnNodes = []; gnnEdges = []; gnnEdgeStart = null;
+  gnnLayerStates = null; gnnCurrentLayer = 0; gnnEmbedColors = [];
+  drawGNNCanvas();
+  document.getElementById('gnn-msg-trace').innerHTML =
+    '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">Run forward pass to see trace</div>';
+  document.getElementById('gnn-layer-nav').style.display='none';
+  Plotly.purge('gnn-embedding-plot');
+  Plotly.purge('gnn-heatmap-plot');
+}
+
+// GNN Explain canvases
+function renderGNNExplainCanvas(step) {
+  const canvasId = `gnn-explain-canvas${step}`;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const acc = LAB_ACCENTS.gnn;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = PALETTE.surface;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const nodes = [
+    {id:'A',x:120,y:150,feat:[0.8,0.3],col:acc},
+    {id:'B',x:260,y:80,feat:[0.4,0.7],col:CLUSTER_COLORS[1]},
+    {id:'C',x:380,y:180,feat:[0.9,0.5],col:CLUSTER_COLORS[2]},
+    {id:'D',x:300,y:260,feat:[0.3,0.8],col:CLUSTER_COLORS[3]},
+    {id:'E',x:160,y:270,feat:[0.6,0.4],col:CLUSTER_COLORS[1]},
+  ];
+  const edges = [{s:'A',t:'B'},{s:'A',t:'E'},{s:'B',t:'C'},{s:'B',t:'D'},{s:'C',t:'D'},{s:'D',t:'E'}];
+
+  if (step === 0) {
+    // Basic graph
+    drawExplainGraph(ctx, nodes, edges, acc, false, '');
+  } else if (step === 1) {
+    // Highlight node C's neighbours for message passing
+    const center = nodes.find(n=>n.id==='C');
+    const neighbours = ['B','D'];
+    // Draw flow arrows
+    nodes.filter(n=>neighbours.includes(n.id)).forEach(n => {
+      drawArrow(ctx, n.x, n.y, center.x, center.y, acc);
+    });
+    drawExplainGraph(ctx, nodes, edges, acc, false, '');
+    // Label
+    ctx.fillStyle = acc;
+    ctx.font = '12px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Node C aggregates from B, D', 300, 320);
+  } else if (step === 2) {
+    // Matrix visualisation
+    drawExplainGraph(ctx, nodes, edges, acc, false, '');
+    // Matrix overlay
+    const labels = nodes.map(n=>n.id);
+    const mx = 400, my = 30, cw = 24;
+    ctx.fillStyle = PALETTE.muted;
+    ctx.font = '10px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    labels.forEach((l,i) => {
+      ctx.fillText(l, mx + (i+0.5)*cw, my + 12);
+      ctx.fillText(l, mx - 10, my + 30 + (i+0.5)*cw);
+    });
+    const A = [[1,1,0,0,1],[1,1,1,1,0],[0,1,1,1,0],[0,1,1,1,1],[1,0,0,1,1]];
+    A.forEach((row,ri) => row.forEach((v,ci) => {
+      ctx.fillStyle = v ? hexToRgba(acc,0.7) : PALETTE.surface2;
+      ctx.fillRect(mx+ci*cw, my+24+ri*cw, cw-2, cw-2);
+    }));
+    ctx.fillStyle = PALETTE.muted2;
+    ctx.font = '10px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Â (norm. adjacency)', mx+60, my+24+5*cw+14);
+  } else if (step === 3) {
+    // Three-level tasks
+    const taskNodes = [
+      {id:'node\nclassif.',x:100,y:180,col:acc},
+      {id:'link\npredict',x:260,y:100,col:CLUSTER_COLORS[1]},
+      {id:'graph\nclassif.',x:400,y:180,col:CLUSTER_COLORS[2]},
+    ];
+    taskNodes.forEach(n => {
+      ctx.beginPath(); ctx.arc(n.x,n.y,36,0,Math.PI*2);
+      ctx.fillStyle = PALETTE.surface2; ctx.fill();
+      ctx.strokeStyle = n.col; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = n.col; ctx.font = '10px DM Sans, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      n.id.split('\n').forEach((line,li) => ctx.fillText(line, n.x, n.y-8+li*16));
+    });
+    // Labels below
+    ['Social networks','Recommender systems','Drug discovery'].forEach((t,i) => {
+      ctx.fillStyle = PALETTE.muted2; ctx.font = '10px DM Sans, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(t, taskNodes[i].x, taskNodes[i].y+44);
+    });
+  }
+}
+
+function drawExplainGraph(ctx, nodes, edges, acc, highlightAll, label) {
+  edges.forEach(e => {
+    const s = nodes.find(n=>n.id===e.s), t = nodes.find(n=>n.id===e.t);
+    if (!s||!t) return;
+    ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(t.x,t.y);
+    ctx.strokeStyle = PALETTE.border2; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+  nodes.forEach(n => {
+    ctx.beginPath(); ctx.arc(n.x,n.y,18,0,Math.PI*2);
+    ctx.fillStyle = n.col ? hexToRgba(n.col,0.25) : PALETTE.surface2; ctx.fill();
+    ctx.strokeStyle = n.col || PALETTE.border2; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = n.col || PALETTE.text; ctx.font = 'bold 11px DM Mono, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(n.id, n.x, n.y);
+  });
+}
+
+function drawArrow(ctx, x1,y1,x2,y2, color) {
+  const angle = Math.atan2(y2-y1, x2-x1);
+  const len = Math.hypot(x2-x1,y2-y1);
+  const ex = x1 + Math.cos(angle)*(len-24);
+  const ey = y1 + Math.sin(angle)*(len-24);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(ex,ey);
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(ex,ey);
+  ctx.lineTo(ex-10*Math.cos(angle-0.4), ey-10*Math.sin(angle-0.4));
+  ctx.lineTo(ex-10*Math.cos(angle+0.4), ey-10*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════════════════════════
+const quizState = {};
+
+async function initQuiz(lab) {
+  const container = document.getElementById(`${lab}-quiz-container`);
+  const res = await fetch(`/api/quiz/questions?topic=${lab}`);
+  const data = await res.json();
+  quizState[lab] = { questions: data.questions, current: 0, score: 0, answered: false };
+  renderQuizQuestion(lab);
+}
+
+function renderQuizQuestion(lab) {
+  const state = quizState[lab];
+  const container = document.getElementById(`${lab}-quiz-container`);
+  if (!state || !state.questions.length) return;
+
+  if (state.current >= state.questions.length) {
+    renderQuizScore(lab);
+    return;
+  }
+
+  const q = state.questions[state.current];
+  const acc = LAB_ACCENTS[lab];
+  const total = state.questions.length;
+  const progress = (state.current / total * 100).toFixed(0);
+  const letters = ['A','B','C','D'];
+
+  container.innerHTML = `
+    <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${progress}%"></div></div>
+    <div class="quiz-q-num">Question ${state.current+1} of ${total}</div>
+    <div class="quiz-question">${q.question}</div>
+    <div class="quiz-options" id="${lab}-quiz-options">
+      ${q.options.map((opt,i) => `
+        <div class="quiz-option" onclick="selectQuizAnswer('${lab}', ${i})" id="${lab}-opt-${i}">
+          <span class="opt-letter">${letters[i]}</span>
+          <span>${opt}</span>
+        </div>`).join('')}
+    </div>
+    <div id="${lab}-quiz-explanation" style="display:none"></div>
+    <div class="quiz-actions">
+      <button class="btn btn-primary" id="${lab}-quiz-next" style="display:none" onclick="nextQuizQuestion('${lab}')">
+        ${state.current < total-1 ? 'Next Question →' : 'See Results'}
+      </button>
+    </div>`;
+  state.answered = false;
+}
+
+function selectQuizAnswer(lab, idx) {
+  const state = quizState[lab];
+  if (state.answered) return;
+  state.answered = true;
+  const q = state.questions[state.current];
+  const correct = q.answer;
+  if (idx === correct) state.score++;
+  document.querySelectorAll(`#${lab}-quiz-options .quiz-option`).forEach((el,i) => {
+    el.classList.add('locked');
+    if (i === correct) el.classList.add('correct');
+    else if (i === idx) el.classList.add('wrong');
+  });
+  const expEl = document.getElementById(`${lab}-quiz-explanation`);
+  expEl.style.display = 'block';
+  expEl.innerHTML = `<strong>${idx===correct?'✓ Correct!':'✗ Incorrect.'}</strong> ${q.explanation}`;
+  expEl.className = 'quiz-explanation';
+  document.getElementById(`${lab}-quiz-next`).style.display = 'inline-flex';
+}
+
+function nextQuizQuestion(lab) {
+  quizState[lab].current++;
+  renderQuizQuestion(lab);
+}
+
+function renderQuizScore(lab) {
+  const state = quizState[lab];
+  const pct = Math.round(state.score / state.questions.length * 100);
+  const msg = pct === 100 ? 'Perfect score!' : pct >= 75 ? 'Great work!' : pct >= 50 ? 'Good effort!' : 'Keep practising!';
+  document.getElementById(`${lab}-quiz-container`).innerHTML = `
+    <div class="quiz-score-screen">
+      <div class="score-ring">${pct}%</div>
+      <div class="score-label">${msg}</div>
+      <div class="score-sub">${state.score} / ${state.questions.length} correct</div>
+      <div style="margin-top:24px">
+        <button class="btn btn-primary" onclick="initQuiz('${lab}')">Retry Quiz</button>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPLAIN PLOT ROUTER
+// ═══════════════════════════════════════════════════════════════
+function renderExplainPlot(lab, step) {
+  if (lab === 'kernel') renderKernelExplainPlot(step);
+  else if (lab === 'pca') renderPCAExplainPlot(step);
+  else if (lab === 'spectral') renderSpectralExplainPlot(step);
+  else if (lab === 'gnn') renderGNNExplainCanvas(step);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MATH UTILS
+// ═══════════════════════════════════════════════════════════════
+let _seed = 42;
+function seededRng(seed) {
+  let s = seed;
+  return () => { s = (s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
+}
+const _rng = seededRng(99);
+function randn() {
+  // Box-Muller
+  const u = _rng()||1e-9, v = _rng();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)*0.3;
+}
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function variance(arr) { const m=mean(arr); return mean(arr.map(x=>(x-m)**2)); }
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initKernelLab();
+  // Update logo color
+  document.getElementById('logo-dot').style.color = LAB_ACCENTS.kernel;
+});
+</script>
+
+<!-- ── AI Tutor Chat Widget ─────────────────────────────────────── -->
+<style>
+/* Floating button */
+#tutor-fab {
+  position: fixed; bottom: 28px; right: 28px; z-index: 1000;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); border: none; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: #0d0f14; font-size: 22px;
+}
+#tutor-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(0,0,0,0.5); }
+#tutor-fab .tutor-badge {
+  position: absolute; top: -2px; right: -2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #34d399; border: 2px solid var(--bg);
+  animation: pulse 2s infinite;
+}
+
+/* Chat panel */
+#tutor-panel {
+  position: fixed; bottom: 92px; right: 28px; z-index: 999;
+  width: 380px; max-height: 560px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 16px; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  transform: translateY(20px) scale(0.95);
+  opacity: 0; pointer-events: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  overflow: hidden;
+}
+#tutor-panel.open {
+  transform: translateY(0) scale(1);
+  opacity: 1; pointer-events: all;
+}
+
+/* Panel header */
+.tutor-header {
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+}
+.tutor-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; font-size: 15px; color: #0d0f14; flex-shrink: 0;
+}
+.tutor-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+.tutor-status { font-size: 0.72rem; color: var(--muted2); margin-top: 1px; }
+.tutor-close {
+  margin-left: auto; background: none; border: none;
+  color: var(--muted); cursor: pointer; font-size: 18px;
+  padding: 4px; border-radius: 6px; line-height: 1;
+  transition: color 0.15s;
+}
+.tutor-close:hover { color: var(--text); }
+
+/* Context pill */
+.tutor-context-bar {
+  padding: 6px 12px; border-bottom: 1px solid var(--border);
+  background: var(--bg); display: flex; align-items: center; gap: 6px;
+}
+.tutor-ctx-pill {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+  background: var(--glow); border: 1px solid var(--accent);
+  padding: 2px 8px; border-radius: 20px;
+}
+.tutor-ctx-label { font-size: 0.7rem; color: var(--muted); }
+
+/* Messages */
+#tutor-messages {
+  flex: 1; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0;
+}
+#tutor-messages::-webkit-scrollbar { width: 4px; }
+#tutor-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.tutor-msg {
+  max-width: 88%; padding: 10px 13px;
+  border-radius: 12px; font-size: 0.87rem; line-height: 1.55;
+  animation: fadeIn 0.2s ease;
+}
+.tutor-msg.assistant {
+  align-self: flex-start;
+  background: var(--surface2); color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.tutor-msg.user {
+  align-self: flex-end;
+  background: var(--accent); color: #0d0f14; font-weight: 500;
+  border-bottom-right-radius: 4px;
+}
+.tutor-msg.thinking {
+  align-self: flex-start;
+  background: var(--surface2); color: var(--muted2);
+}
+.tutor-msg .msg-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 4px; opacity: 0.7;
+}
+/* Render markdown-style bold and code in assistant messages */
+.tutor-msg.assistant strong { color: var(--accent); font-weight: 600; }
+.tutor-msg.assistant code {
+  font-family: var(--mono); font-size: 0.82em;
+  background: var(--bg); padding: 1px 5px; border-radius: 4px;
+  color: var(--accent);
+}
+
+/* Thinking dots */
+.thinking-dots span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted2); margin: 0 2px;
+  animation: blink 1.2s infinite;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+/* Suggested questions */
+.tutor-suggestions {
+  padding: 0 14px 10px; display: flex; flex-wrap: wrap; gap: 6px;
+}
+.tutor-suggest-btn {
+  padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border2);
+  background: none; color: var(--muted2); font-family: var(--font);
+  font-size: 0.75rem; cursor: pointer; transition: all 0.15s;
+  text-align: left;
+}
+.tutor-suggest-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Input area */
+.tutor-input-row {
+  padding: 10px 12px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: flex-end;
+  background: var(--surface2);
+}
+#tutor-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-family: var(--font);
+  font-size: 0.875rem; padding: 9px 12px; resize: none;
+  max-height: 100px; min-height: 38px; outline: none; line-height: 1.4;
+  transition: border-color 0.15s;
+}
+#tutor-input:focus { border-color: var(--accent); }
+#tutor-input::placeholder { color: var(--muted); }
+#tutor-send {
+  width: 36px; height: 36px; border-radius: 8px; border: none;
+  background: var(--accent); color: #0d0f14; cursor: pointer;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: filter 0.15s;
+}
+#tutor-send:hover { filter: brightness(1.15); }
+#tutor-send:disabled { opacity: 0.4; cursor: default; }
+</style>
+
+<!-- FAB button -->
+<button id="tutor-fab" onclick="toggleTutor()" title="Ask AI Tutor">
+  🎓
+  <div class="tutor-badge"></div>
+</button>
+
+<!-- Chat panel -->
+<div id="tutor-panel">
+  <div class="tutor-header">
+    <div class="tutor-avatar">🎓</div>
+    <div>
+      <div class="tutor-name">ML Tutor</div>
+      <div class="tutor-status">Powered by Claude · context-aware</div>
+    </div>
+    <button class="tutor-close" onclick="toggleTutor()">✕</button>
+  </div>
+  <div class="tutor-context-bar">
+    <span class="tutor-ctx-label">Currently on:</span>
+    <span class="tutor-ctx-pill" id="tutor-ctx-pill">Kernel Trick · Explain</span>
+  </div>
+  <div id="tutor-messages"></div>
+  <div class="tutor-suggestions" id="tutor-suggestions"></div>
+  <div class="tutor-input-row">
+    <textarea id="tutor-input" placeholder="Ask anything about this topic…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTutorMessage()}"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+    <button id="tutor-send" onclick="sendTutorMessage()">↑</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AI TUTOR
+// ═══════════════════════════════════════════════════════════════
+let tutorOpen = false;
+let tutorHistory = [];   // [{role, content}]
+let tutorBusy = false;
+let tutorGreeted = false;
+
+const TUTOR_CONTEXT = {
+  kernel: {
+    title: 'Kernel Trick & SVMs',
+    summary: `The student is studying the Kernel Trick and Support Vector Machines (SVMs).
+Topics covered: maximum-margin hyperplanes, support vectors, non-linear separability,
+feature maps φ(x), the kernel trick (K(x,x')=φ(x)·φ(x')), RBF/polynomial/linear kernels,
+Mercer's theorem, the SVM dual formulation, decision boundaries, C and γ parameters.
+The sandbox lets them draw points and classify with different kernels in real time.`,
+    steps: ['Why SVMs and the separation problem','Lifting data into higher dimensions with φ(x)','The kernel trick — replacing inner products with K(x,x\')','Decision boundaries and hyperparameters C and γ'],
+    suggestions: ['What exactly is the kernel trick?','Why does RBF work on circles?','What do C and γ control?','When would I use polynomial over RBF?']
+  },
+  pca: {
+    title: 'Principal Component Analysis',
+    summary: `The student is studying Principal Component Analysis (PCA).
+Topics covered: dimensionality reduction, variance maximisation, the 5-step PCA algorithm
+(centre → standardise → covariance matrix → eigendecomposition → project),
+eigenvectors and eigenvalues of the covariance matrix, principal components,
+encoding/decoding, reconstruction error, the scree plot, eigengap heuristic,
+cumulative explained variance, and choosing k.`,
+    steps: ['What PCA does — the full 5-step algorithm','Covariance matrix and eigenvectors (Rayleigh quotient)','Projection and reconstruction error','Choosing k — scree plot and eigengap heuristic'],
+    suggestions: ['How does PCA actually find directions?','What is an eigenvector intuitively?','How do I choose how many components to keep?','Why does standardising matter?']
+  },
+  spectral: {
+    title: 'Spectral Clustering',
+    summary: `The student is studying Spectral Clustering.
+Topics covered: why k-means fails on non-convex clusters (Voronoi regions), the affinity
+graph (RBF kernel W_ij = exp(-γ‖xᵢ-xⱼ‖²)), graph Laplacian (L = D - W), normalised
+Laplacian, eigendecomposition of L, eigengap heuristic for choosing k, spectral embedding,
+row-normalisation, k-means on the embedding, comparison with plain k-means.`,
+    steps: ['Why k-means fails on non-convex clusters','Building the affinity graph and RBF kernel','Graph Laplacian and eigenvalue spectrum','Spectral embedding + k-means — the full algorithm'],
+    suggestions: ['Why does spectral clustering work on circles?','What is the graph Laplacian?','How do I interpret the eigenvalue spectrum?','Why does the embedding separate clusters?']
+  },
+  gnn: {
+    title: 'Graph Neural Networks',
+    summary: `The student is studying Graph Neural Networks (GNNs).
+Topics covered: graphs as data structures (nodes, edges, adjacency matrix), why standard
+MLPs fail on graphs (permutation invariance, variable size), message passing framework
+(message → aggregate → update), k-hop receptive field, GCN update rule H' = σ(Â H W),
+normalised adjacency with self-loops Â = D̂⁻¹(A+I), over-smoothing, node classification,
+link prediction, graph classification, readout functions.`,
+    steps: ['Why graphs matter and why MLPs fail','Message passing — send, aggregate, update','GCN matrix form H\'=σ(ÂHW) and Â','GNN tasks: node, edge, and graph level'],
+    suggestions: ['What is message passing intuitively?','What does Â H actually compute?','What is the over-smoothing problem?','How does a GNN learn node embeddings?']
+  }
+};
+
+function getTutorContext() {
+  const lab  = currentLab || 'kernel';
+  const ctx  = TUTOR_CONTEXT[lab] || TUTOR_CONTEXT.kernel;
+  // Detect current mode
+  const activeMode = ['explain','sandbox','quiz'].find(m => {
+    const el = document.getElementById(`${lab}-${m}`);
+    return el && el.classList.contains('active');
+  }) || 'explain';
+  // Detect current explain step
+  const stepIdx = (stepState && stepState[lab]) || 0;
+  const stepTitle = ctx.steps[stepIdx] || ctx.steps[0];
+  return { lab, ctx, activeMode, stepIdx, stepTitle };
+}
+
+function buildSystemPrompt() {
+  const { lab, ctx, activeMode, stepIdx, stepTitle } = getTutorContext();
+  const modeDesc = { explain: 'reading the explanation', sandbox: 'experimenting in the interactive sandbox', quiz: 'answering quiz questions' };
+  return `You are an expert ML tutor embedded in an interactive learning app called ML Concept Lab. You are helping an undergraduate computing student understand machine learning concepts.
+
+CURRENT CONTEXT:
+- Topic: ${ctx.title}
+- Tab: ${modeDesc[activeMode] || activeMode}
+- Explain step: "${stepTitle}" (step ${stepIdx+1} of 4)
+
+TOPIC KNOWLEDGE:
+${ctx.summary}
+
+TEACHING STYLE:
+- Be concise but complete — 2-4 short paragraphs max unless the student asks for more depth
+- Use concrete examples and intuition first, then formalism
+- When relevant, connect your answer to what the student can try in the sandbox
+- Use **bold** for key terms and \`code\` for maths/notation
+- If asked something outside these four topics, gently redirect: "I'm specialised in the topics covered in this lab — let me know if you have questions about ${ctx.title}!"
+- Do not repeat the student's question back to them`;
+}
+
+function updateTutorContext() {
+  const { lab, ctx, activeMode, stepIdx, stepTitle } = getTutorContext();
+  const pill = document.getElementById('tutor-ctx-pill');
+  if (pill) {
+    const modeLabel = { explain: '· Explain', sandbox: '· Sandbox', quiz: '· Quiz' };
+    pill.textContent = `${ctx.title} ${modeLabel[activeMode]||''}`;
+    pill.style.background = hexToRgba(LAB_ACCENTS[lab] || '#7c6ef7', 0.15);
+    pill.style.borderColor = LAB_ACCENTS[lab] || '#7c6ef7';
+    pill.style.color = LAB_ACCENTS[lab] || '#7c6ef7';
+  }
+  const fab = document.getElementById('tutor-fab');
+  if (fab) fab.style.background = LAB_ACCENTS[lab] || '#7c6ef7';
+}
+
+function showSuggestions() {
+  const { ctx } = getTutorContext();
+  const container = document.getElementById('tutor-suggestions');
+  if (!container || tutorHistory.length > 2) { if(container) container.innerHTML=''; return; }
+  container.innerHTML = ctx.suggestions.map(s =>
+    `<button class="tutor-suggest-btn" onclick="sendTutorSuggestion(this)">${s}</button>`
+  ).join('');
+}
+
+function sendTutorSuggestion(btn) {
+  const text = btn.textContent;
+  document.getElementById('tutor-input').value = text;
+  sendTutorMessage();
+}
+
+function toggleTutor() {
+  tutorOpen = !tutorOpen;
+  const panel = document.getElementById('tutor-panel');
+  panel.classList.toggle('open', tutorOpen);
+  if (tutorOpen) {
+    updateTutorContext();
+    if (!tutorGreeted) {
+      tutorGreeted = true;
+      showWelcomeMessage();
+    }
+    showSuggestions();
+    setTimeout(() => document.getElementById('tutor-input').focus(), 300);
+  }
+}
+
+function showWelcomeMessage() {
+  const { ctx, stepTitle } = getTutorContext();
+  appendTutorMessage('assistant',
+    `Hi! I'm your ML Tutor 👋\n\nYou're currently studying **${ctx.title}**. I can help you understand any concept, work through the maths, or explain what you're seeing in the sandbox.\n\nWhat would you like to explore?`
+  );
+}
+
+function appendTutorMessage(role, content) {
+  const messages = document.getElementById('tutor-messages');
+  const div = document.createElement('div');
+  div.className = `tutor-msg ${role}`;
+  // Light markdown rendering: **bold**, `code`
+  const rendered = content
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+  div.innerHTML = rendered;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return div;
+}
+
+function showThinking() {
+  const messages = document.getElementById('tutor-messages');
+  const div = document.createElement('div');
+  div.className = 'tutor-msg thinking';
+  div.id = 'tutor-thinking';
+  div.innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div>';
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function removeThinking() {
+  const el = document.getElementById('tutor-thinking');
+  if (el) el.remove();
+}
+
+async function sendTutorMessage() {
+  if (tutorBusy) return;
+  const input = document.getElementById('tutor-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('tutor-send').disabled = true;
+  document.getElementById('tutor-suggestions').innerHTML = '';
+  tutorBusy = true;
+
+  // Show user message
+  appendTutorMessage('user', text);
+
+  // Add to history
+  tutorHistory.push({ role: 'user', content: text });
+
+  // Show thinking
+  showThinking();
+
+  try {
+    // Update system prompt with current context
+    const systemPrompt = buildSystemPrompt();
+
+    const response = await fetch('/api/tutor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: systemPrompt,
+        messages: tutorHistory
+      })
+    });
+
+    const data = await response.json();
+    removeThinking();
+
+    if (data.error) {
+      const isKeyError = data.error.includes('ANTHROPIC_API_KEY');
+      appendTutorMessage('assistant',
+        isKeyError
+          ? '**API key not set.** To enable the tutor, run:\n\n`export ANTHROPIC_API_KEY=sk-ant-...`\n\nthen restart the server with `python app.py`.'
+          : `Sorry, something went wrong: ${data.error}`
+      );
+    } else if (data.text) {
+      tutorHistory.push({ role: 'assistant', content: data.text });
+      appendTutorMessage('assistant', data.text);
+    } else {
+      appendTutorMessage('assistant', 'Sorry, I got an empty response. Please try again!');
+    }
+  } catch (err) {
+    removeThinking();
+    appendTutorMessage('assistant', 'Network error — please check your connection and try again.');
+    console.error('Tutor error:', err);
+  } finally {
+    tutorBusy = false;
+    document.getElementById('tutor-send').disabled = false;
+    // Show suggestions again if early in conversation
+    if (tutorHistory.length <= 4) showSuggestions();
+    updateTutorContext();
+  }
+}
+
+// Keep context pill updated when user navigates
+const _origSwitchLab = switchLab;
+switchLab = function(lab) {
+  _origSwitchLab(lab);
+  updateTutorContext();
+};
+const _origSwitchMode = switchMode;
+switchMode = function(lab, mode) {
+  _origSwitchMode(lab, mode);
+  updateTutorContext();
+};
+</script>
+</body>
+</html>
